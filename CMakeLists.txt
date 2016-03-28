@@ -1,0 +1,6 @@
+cmake_minimum_required (VERSION 2.8.11)
+project (zee80)
+set(CMAKE_CXX_FLAGS "-std=c++11 -O0 -ggdb -Wall -pg -funroll-loops")
+add_library (zee80 z80.cpp bushandler.cpp)
+add_executable (zx48k zx48k.cpp zxtape.cpp emusdl.cpp)
+target_link_libraries (zx48k LINK_PUBLIC zee80 SDL boost_program_options)
