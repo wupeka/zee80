@@ -16,3 +16,9 @@ Keys:
  - f7 - start tape
  - f8 - turbo mode on/off
 
+TODO:
+ - Add missing CPU ops (what happens if Z80 gets a really invalid op?)
+ - Do a manual z80 review  - bugs are visible eg. in Jet Set Willy
+ - add PCM audio support 
+ - add AY audio support
+ - Add kempston joystick support
