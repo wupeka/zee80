@@ -25,6 +25,49 @@ void z80::reset() {
 	ei_waiting = false;
 }
 
+uint32_t z80::readstate(std::istream& in) {
+	// AF BC DE HL AF' BC' DE' HL' IX IY SP PC
+	uint16_t af;
+	in >>  std::hex >> af;
+	a = af >> 8;
+	f = af & 0xff;
+	in >> std::hex >> bc;
+	in >> std::hex >> de;
+	in >> std::hex >> hl;
+	in >> std::hex >> af;
+	ap = af >> 8;
+	fp = af & 0xff;
+	in >> std::hex >> bcp;
+	in >> std::hex >> dep;
+	in >> std::hex >> hlp;
+	in >> std::hex >> ix;
+	in >> std::hex >> iy;
+	in >> std::hex >> sp;
+	in >> std::hex >> pc;
+	// I R IFF1 IFF2 IM <halted> <tstates>
+	uint16_t v;
+	in >> std::hex >> v;
+	i = v;
+	in >> std::hex >> v;
+	r = v;
+	in >> iff1;
+	in >> iff2;
+	in >> v;
+	imode = v;
+	in >> in_halt;
+	uint32_t tst;
+	in >> std::dec >>  tst;
+	return tst;
+}
+
+void z80::writestate(std::ostream& out) {
+	char p[1024];
+	snprintf(p, 1024, "%02x%02x %04x %04x %04x %02x%02x %04x %04x %04x %04x %04x %04x %04x\n%02x %02x %d %d %d %d %d\n",
+		 a,f,bc,de,hl,ap, fp, bcp,dep, hlp, ix, iy, sp, pc,
+		 i, r, iff1, iff2, imode, in_halt, cycles);
+	out << p;
+}
+
 uint64_t z80::tick() {
 	if (in_halt) {
 		cycles +=4;
@@ -36,6 +79,7 @@ uint64_t z80::tick() {
 	instr = instrv & 0xff;
 	cycles += 4; // default and always
 	pc++;
+	r++;
 	(this->*ops[instr])();
 	if (ei_was_waiting) {
 		iff1 = true;
@@ -59,7 +103,7 @@ char* z80::get_trace() {
 	return out;
 }
 
-void z80::interrupt() {
+bool z80::interrupt() {
 	if (iff1) {
 		// push pc
 		sp--;
@@ -82,6 +126,9 @@ void z80::interrupt() {
 			throw IllOp(pc);
 		}
 		in_halt = false;
+		return true;
+	} else {
+		return false;
 	}
 }
 
@@ -163,14 +210,15 @@ uint8_t z80::i_add8(uint8_t x, uint8_t y, bool carry) {
 	return ans;
 };
 uint8_t z80::i_sub8(uint8_t x, uint8_t y, bool carry) {
-	uint8_t oc = ((carry && (f & fC)) ? 1 : 0);
+	uint8_t occ = f&fC;
+	uint8_t oc = ((carry && occ) ? 1 : 0);
 	uint16_t ans = x - y - oc;
 	f = fN; // subtraction
 	i_setfSZ8(ans);
 	if (ans > 0xff) {
 		f |= fC;
 	}
-	if (((x ^ y) & 0x80) != 0 && ((x ^ ans) & 0x80) == 0) {
+	if (((x ^ y) & 0x80) != 0 && ((x ^ ans) & 0x80) != 0) {
 		f |= fPV;
 	}
 	if (((x & 0xf) - (y & 0xf) - oc) & 0x10) {
@@ -205,10 +253,10 @@ uint8_t z80::i_inc8(uint8_t x) {
 	uint8_t ans = x+1;
 	f = f & fC; // unchanged
 	i_setfSZ8(ans);
-	if (a == 0x7f) {
+	if (x == 0x7f) {
 		f |= fPV;
 	}
-	if ((x & 0x4) && !(ans & 0x4)) {
+	if ((x & 0x8) && !(ans & 0x8)) {
 		f |= fH;
 	}
 	return ans;
@@ -218,6 +266,7 @@ uint8_t z80::i_dec8(uint8_t x) {
 	uint8_t ans = x-1;
 	f = f & fC; // unchanged
 	i_setfSZ8(ans);
+	f |= fN;
 	if (x == 0x80) {
 		f |= fPV;
 	}
@@ -227,14 +276,25 @@ uint8_t z80::i_dec8(uint8_t x) {
 	return ans;
 };
 uint16_t z80::i_add16(uint16_t x, uint16_t y, bool carry) {
-	uint8_t oc = ((carry && (f & fC)) ? 1 : 0);
-	uint32_t res = x + y + oc;
-	f &= (fS | fZ | fPV);
-	if (res > 0xffff) {
-		f |= fC;
+
+	uint8_t prevF = f;
+	if (carry) {
+		prevF &= fPV;
+	} else {
+		prevF &= (fZ | fS | fPV);
 	}
-	if (((x & 0x7ff) + (y & 0x7ff) + oc) & 0x800) {
-		f |= fH;
+	uint8_t low = i_add8(x & 0xff, y & 0xff, carry);
+	uint8_t hi = i_add8(x >> 8, y >> 8, true);
+	uint32_t res = (hi << 8) | low;
+	f &= ~(fZ | fS | fPV);
+	f |= prevF;
+	if (carry) {
+		if (res > 0x7fff) {
+			f |= fS;
+		}
+		if (res == 0) {
+			f |= fZ;
+		}
 	}
 	return res;
 }
@@ -246,7 +306,7 @@ uint16_t z80::i_sub16(uint16_t x, uint16_t y, bool carry) {
 	if (res > 0xffff) {
 		f |= fC;
 	}
-	if (((x & 0x7ff) - (y & 0x7ff) - oc) & 0x800) {
+	if (((x & 0xfff) - (y & 0xfff) - oc) & 0x1000) {
 		f |= fH;
 	}
 	// TODO overflow! - fPV
@@ -307,6 +367,8 @@ uint8_t z80::i_rot(uint8_t v, bool right, bool c, bool update_flags) {
 		i_setfSZ8(v);
 		i_setfP8(v);
 	}
+	f &= ~(fF3 | fF5);
+	f |= v & (fF3 | fF5);
 	return v;
 }
 
@@ -549,16 +611,23 @@ void z80::op_orm() {
 void z80::op_cpr() {
 	uint8_t *r = regaddr(instr);
 	i_sub8(a, *r, false);
+	f &= ~(fF3 | fF5);
+	f |= *r & (fF3 | fF5);
 }
 
 void z80::op_cpn() {
 	i_sub8(a, (instrv >> 8) & 0xff, false);
+	f &= ~(fF3 | fF5);
+	f |= (instrv >> 8) & (fF3 | fF5);
 	pc++;
 	cycles+=3;
 }
 
 void z80::op_cpm() {
+	uint8_t v = bh.readmem(hl);
 	i_sub8(a, bh.readmem(hl), false);
+	f &= ~(fF3 | fF5);
+	f |= v & (fF3 | fF5);
 	cycles+=3;
 }
 
@@ -607,66 +676,44 @@ void z80::op_daa() {
 //	    1   7~f      0   0~9      a0        1
 //	    1   6~f      1   6~f      9a        1
 
+
+
 	bool prevc = f & fC;
 	bool prevh = f & fH;
+	bool prevn = f & fN;
 	uint8_t lo = a & 0xf;
 	uint8_t hi = a >> 4;
 	f = f & fN;
 
-	if (!(f & fN)) {
-		if (!prevc && hi < 10 && !prevh && lo < 10) {
-			return;
-		} else if (!prevc && hi < 9 && !prevh && lo > 9) {
-			a += 0x06;
-			return;
-		} else if (!prevc && hi < 10 && prevh && lo < 4) {
-			a += 0x06;
-			return;
-		} else if (!prevc && hi > 9 && !prevh && lo < 10) {
-			a += 0x60;
-			f |= fC;
-			return;
-		} else if (!prevc && hi > 8 && !prevh && lo > 9) {
-			a += 0x66;
-			f |= fC;
-			return;
-		} else if (!prevc && hi > 9 && prevh && lo < 4) {
-			a += 0x66;
-			f |= fC;
-			return;
-		} else if (prevc && hi < 3 && !prevh && lo < 10) {
-			a += 0x60;
-			f |= fC;
-			return;
-		} else if (prevc && hi < 3 && !prevh && lo > 9) {
-			a += 0x66;
-			f |= fC;
-			return;
-		} else if (prevc && hi < 4 && prevh && lo < 4) {
-			a += 0x66;
-			f |= fC;
-			return;
-		} else {
-			throw IllOp(pc);
-		}
+	uint8_t diff = 0;
+
+	if (!prevc && hi < 10 && !prevh && lo < 10) {
+		diff = 0;
+	} else if (!prevc && hi < 10 && prevh && lo < 10) {
+		diff = 0x06;
+	} else if (!prevc && hi < 9 && lo > 9) {
+		diff = 0x06;
+	} else if (!prevc && hi > 9 && !prevh && lo < 10) {
+		diff = 0x60;
+	} else if (prevc && !prevh && lo < 10) {
+		diff = 0x60;
 	} else {
-		if (!prevc && hi < 10 && !prevh && lo < 10) {
-			return;
-		} else if (!prevc && hi < 9 && prevh && lo > 6) {
-			a += 0xfa;
-			return;
-		} else if (prevc && hi > 6 && !prevh && lo < 10) {
-			a += 0xa0;
-			f |= fC;
-			return;
-		} else if (prevc && hi > 5 && prevh && lo > 5) {
-			a += 0x9a;
-			f |= fC;
-			return;
-		} else {
-			throw IllOp(pc);
-		}
+		diff = 0x66;
 	}
+
+	if ((prevc) || (hi > 8 && lo > 9) || (hi > 9)) {
+		f |= fC;
+	}
+	if ((!prevn && lo > 9) || (prevn && prevh && lo < 6)) {
+		f |= fH;
+	}
+	if (prevn) {
+		a -= diff;
+	} else {
+		a += diff;
+	}
+
+	f |= (a & (fF3 | fF5));
 }
 
 void z80::op_addhlrr() {
@@ -782,17 +829,25 @@ void z80::op_jphlm() {
 }
 
 void z80::op_ccf() {
+	f &= ~(fH | fF3 | fF5 | fN);
 	f ^= fC;
+	if (!(f & fC)) {
+		f |= fH;
+	}
+	f |= (a & (fF3 | fF5));
 }
 
 void z80::op_scf() {
+	f &= ~(fH | fN | fF3 | fF5);
 	f |= fC;
+	f |= (a & (fF3 | fF5));
 }
 
 void z80::op_cpl() {
 	a ^= 0xff;
 	f |= fH;
 	f |= fN;
+	f |= (a & (fF3 | fF5));
 }
 
 void z80::op_di() {
@@ -836,31 +891,35 @@ void z80::op_rra() {
 void z80::op_BITS() {
 	cycles += 4;
 	pc++;
+	r++;
 	uint8_t op = instrv >> 8;
 	uint8_t hop = op >> 4;
 
 	if ((hop & 0b1110) == 0b0000) {
 		if ((op & 0b111) == 0b110) {
+			cycles += 7;
 			op_bits_rotm(op & 0b1000, !(hop & 1), hl);
 		} else {
 			op_bits_rotr(op & 0b1000, !(hop & 1), op);
 		}
 	} else if ((hop & 0b1110) == 0b0010) {
 		if ((op & 0b111) == 0b110) {
+			cycles += 7;
 			op_bits_shtm(op & 0b1000, hop & 1, hl);
 		} else {
 			op_bits_shtr(op & 0b1000, hop & 1, op);
 		}
 	} else if ((hop & 0b1100) == 0b0100) {
 		if ((op & 0b0111) == 0b0110) {
+			cycles += 4;
 			i_bits_bitm(op, hl);
 		} else {
 			i_bits_bitr(op);
 		}
 	} else if ((hop & 0b1000) == 0b1000) {
 		if ((op & 0b0111) == 0b0110) {
-			i_bits_setresm(op, hl);
 			cycles += 7;
+			i_bits_setresm(op, hl);
 		} else {
 			i_bits_setresr(op);
 		}
@@ -879,8 +938,29 @@ void z80::op_bits_rotr(bool right, bool c, uint8_t r) {
 }
 
 void z80::op_bits_shtm(bool right, bool c, uint16_t addr) {
+	uint8_t v = bh.readmem(addr);
+	f = 0;
+	if (right) {
+		if (v & 1) {
+			f |= fC;
+		}
+		v >>=1;
+		if (!c) {
+			v |= (v<<1) & 0x80;
+		}
+	} else {
+		if (v & 0x80) {
+			f |= fC;
+		}
+		v <<=1;
+		if (c) {
+			v |= 1;
+		}
+	}
+	i_setfSZ8(v);
+	i_setfP8(v);
+	bh.writemem(addr, v);
 
-	throw IllOp(pc); // TODO
 }
 
 void z80::op_bits_shtr(bool right, bool c, uint8_t r) {
@@ -932,27 +1012,39 @@ void z80::i_bits_bitm(uint8_t op, uint16_t addr) {
 	uint8_t bit = (op >> 3) & 7;
 	uint8_t v = bh.readmem(addr);
 	f |= fH;
-	f &= ~fN;
-	f &= ~fZ;
+	f &= ~(fN | fZ | fS | fPV);
+	// *Z513*0-  PV as Z, S set only if n=7 and b7 of r set
 	if (!(v & (1 << bit))) {
 		f |= fZ;
+		f |= fPV;
 	}
+	if ((bit == 7) && !(f&fZ)) {
+		f |= fS;
+	}
+	f &= ~(fF3 | fF5);
+	f |= (v & (fF3 | fF5));
 }
 
 void z80::i_bits_bitr(uint8_t op) {
 	uint8_t bit = (op >> 3) & 7;
 	uint8_t v = *regaddr(op & 7);
 	f |= fH;
-	f &= ~fN;
-	f &= ~fZ;
+	f &= ~(fN | fZ | fS | fPV);
 	if (!(v & (1 << bit))) {
 		f |= fZ;
+		f |= fPV;
 	}
+	if (bit == 7 && !(f & fZ)) {
+		f |= fS;
+	}
+	f &= ~(fF3 | fF5);
+	f |= (v & (fF3 | fF5));
 }
 
 void z80::op_EXTD() {
 	cycles += 4;
 	pc++;
+	r++;
 	uint8_t op = instrv >> 8;
 	if (op < 0x4 || op > 0xbf) {
 		throw IllOp(pc); // undefined
@@ -963,8 +1055,9 @@ void z80::op_EXTD() {
 		switch (op & 0b111) {
 		case 0: { // ldi, ldd
 			cycles += 8;
-			f &= ~(fN | fH);
-			bh.writemem(de, bh.readmem(hl));
+			f &= ~(fN | fH | fPV);
+			uint8_t v = bh.readmem(hl);
+			bh.writemem(de, v);
 			de += s;
 			hl += s;
 			bc--;
@@ -972,18 +1065,42 @@ void z80::op_EXTD() {
 				cycles += 5;
 				pc -= 2; // loop
 			}
+			if (bc) {
+				f |= fPV;
+			}
+			v+= a;
+			f &= ~(fF3 | fF5);
+			if (v & 2) {
+				f |= fF5;
+			}
+			f |= (v & fF3);
 			break;
 		}
 		case 1: {// cpi, cpd
 			cycles +=8;
 			uint8_t v = bh.readmem(hl);
-			i_sub8(a, v, false);
+			uint8_t c = f&fC;
+			uint8_t h = i_sub8(a, v, false);
 			hl+=s;
 			bc--;
-			if (r && (bc != 0)) {
+			if (r && (bc != 0 && h != 0)) {
 				cycles += 5;
 				pc -= 2; // loop
 			}
+			f &= ~fPV;
+			if (bc) {
+				f |= fPV;
+			}
+			if (f & fH) {
+				h--;
+			}
+			f |= fN;
+			f &= ~(fF3 | fF5 | fC);
+			if (h & 2) {
+				f |= fF5;
+			}
+			f |= (h & fF3);
+			f |= c;
 			break;
 		}
 		case 2: { // ini, ind, inir...
@@ -1021,10 +1138,9 @@ void z80::op_EXTD() {
 			cycles += 4;
 			uint8_t * v = regaddr(op >> 3);
 			*v = bh.readio(bc);
-			f &= ~(fN | fH | fPV);
-			if (parity[*v]) {
-				f |= fPV;
-			}
+			f &= ~(fN | fH);
+			i_setfSZ8(*v);
+			i_setfP8(*v);
 			break;
 		}
 		case 0x1:
@@ -1108,7 +1224,6 @@ void z80::op_EXTD() {
 				a |= (hlx & 0x0f);
 				hlx >>= 4;
 				hlx |= (pa<<4);
-				cycles += 10;
 				i_setfSZ8(a);
 				i_setfP8(a);
 				bh.writemem(hl, hlx);
@@ -1121,9 +1236,11 @@ void z80::op_EXTD() {
 			break;
 		case 0xf: // ld r,a a,r rld
 			if (op == 0x4f) {
+				cycles++;
 				r = a;
 				break;
 			} else if (op == 0x5f) {
+				cycles++;
 				a = r;
 				f &= fC;
 				i_setfSZ8(a);
@@ -1159,6 +1276,7 @@ void z80::op_EXTD() {
 void z80::op_II() {
 	cycles += 4;
 	pc += 1;
+	r++;
 	uint16_t * iir;
 	if (instr & 0x20) {
 		iir = &iy;
@@ -1178,6 +1296,10 @@ void z80::op_II() {
 	// ld iih, iih
 	case 0x64:
 		break;
+	// ld iil, iih:
+	case 0x6c:
+		*hr = (*iir) >> 8;
+		break;
 	// ld iih, iil
 	case 0x65:
 	// ld iil, iil
@@ -1196,7 +1318,6 @@ void z80::op_II() {
 	case 0x69:
 	case 0x6a:
 	case 0x6b:
-	case 0x6c:
 	case 0x6f: {
 		uint8_t * r = regaddr(op);
 		*hr = *r;
@@ -1281,7 +1402,7 @@ void z80::op_II() {
 	}
 	// ld iih, *
 	case 0x26: {
-		(*iir) = (((instrv >> 16) << 8) | 0xff00) | ((*iir) | 0xff);
+		(*iir) = (((instrv >> 16) << 8) & 0xff00) | ((*iir) & 0xff);
 		cycles += 3;
 		pc++;
 		break;
@@ -1397,15 +1518,18 @@ void z80::op_II() {
 		a = i_xor8(a, bh.readmem(addr));
 		break;
 	// cp a, (ii+n)
-	case 0xbe:
+	case 0xbe: {
 		pc++;
 		cycles+=11;
-		i_sub8(a, bh.readmem(addr), false);
+		uint8_t v = bh.readmem(addr);
+		i_sub8(a, v, false);
+		f &= ~(fF3 | fF5);
+		f |= v & (fF3 | fF5);
 		break;
-
+	}
 	// or iil
 	case 0xb5:
-		a = i_or8(a, *iir & 0xf);
+		a = i_or8(a, *iir & 0xff);
 		break;
 	// pop ii
 	case 0xe1:
@@ -1413,6 +1537,14 @@ void z80::op_II() {
 		sp += 2;
 		cycles += 6;
 		break;
+	// ex (sp), ii
+	case 0xe3: {
+		uint16_t tmp = bh.readmem(sp);
+		bh.writemem(sp, *iir & 0xff);
+		bh.writemem(sp+1, *iir >> 8);
+		*iir = tmp;
+		cycles += 15;
+	}
 	// push ii
 	case 0xe5:
 		sp--;
@@ -1452,6 +1584,8 @@ void z80::op_II() {
 			case 6:
 			case 7:
 				i_bits_bitm(sop, addr);
+				f &= ~(fF3 | fF5);
+				f |= ((addr>>8) & (fF3 | fF5));
 				break;
 			default: // rest
 				cycles += 3;
@@ -1463,7 +1597,12 @@ void z80::op_II() {
 		break;
 	}
 	default:
-		throw IllOp(pc);
+		// let's try doing it differently...
+		//throw IllOp(pc);
+		// just ignore the prefix and move to the next instruction
+		pc -= 1;
+		cycles -= 4;
+		break;
 	}
 
 }

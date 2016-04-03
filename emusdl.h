@@ -7,23 +7,25 @@
 
 #ifndef EMUSDL_H_
 #define EMUSDL_H_
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 #include <set>
 class EmuSDL {
 public:
 	virtual
 	~EmuSDL();
 protected:
-	EmuSDL(int w, int h, SDL_Color* palette, int palsize);
+	EmuSDL(int w, int h, int hscale=2, int wscale=2);
 	void redrawscreen();
 	void getinput();
 	int w;
 	int h;
-	int scale;
-	SDL_Surface *bscreen; // 'back' screen, initialized by child
-	SDL_Surface *screen; // 'real' screen, initialized by EmuSDL
-
-	std::set<SDLKey> keys;
+	int hscale;
+	int wscale;
+	SDL_Window *window;
+	SDL_Renderer *renderer;
+	SDL_Texture *texture;
+	uint32_t *pixels;
+	std::set<SDL_Keycode> keys;
 
 };
 

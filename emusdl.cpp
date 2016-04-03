@@ -6,18 +6,19 @@
  */
 
 #include "emusdl.h"
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 
-EmuSDL::EmuSDL(int w, int h,  SDL_Color* palette, int palsize) : w(w), h(h), scale(2) {
+EmuSDL::EmuSDL(int w, int h, int hscale, int wscale) : w(w), h(h), wscale(wscale),hscale(hscale) {
 	// TODO Auto-generated constructor stub
 	SDL_Init( SDL_INIT_EVERYTHING );
-	SDL_WM_SetCaption("EmuSDL", "EmuSDL");
-	screen = SDL_SetVideoMode( scale*w, scale*h, 8, SDL_SWSURFACE);
-	SDL_SetPalette(screen, SDL_LOGPAL | SDL_PHYSPAL, palette, 0, palsize);
-
-	bscreen = SDL_CreateRGBSurface(SDL_SWSURFACE, w, h, 8, 0, 0, 0, 0);
-	SDL_SetPalette(bscreen, SDL_LOGPAL | SDL_PHYSPAL, palette, 0, palsize);
-	SDL_LockSurface(bscreen); // unlocked only for flip
+	window = SDL_CreateWindow("EmuSDL", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, wscale*w, hscale*h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+	renderer = SDL_CreateRenderer(window, -1, 0);
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");  // make the scaled rendering look smoother.
+	SDL_RenderSetLogicalSize(renderer, wscale*w, hscale*h);
+	texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+				    SDL_TEXTUREACCESS_STREAMING,
+				    w, h);
+	pixels = (uint32_t*) malloc(w*h*sizeof(uint32_t));
 }
 
 EmuSDL::~EmuSDL() {
@@ -25,23 +26,10 @@ EmuSDL::~EmuSDL() {
 }
 
 void EmuSDL::redrawscreen() {
-	if (scale == 1) {
-		SDL_UnlockSurface(bscreen);
-		SDL_BlitSurface(bscreen, NULL, screen, NULL );
-		SDL_LockSurface(bscreen);
-	} else {
-		SDL_LockSurface(screen);
-		// not my proudest moment...
-		for (int x=0; x < w; x++)
-			for (int y=0; y < h; y++)
-				for (int i=0; i < scale; i++)
-					for (int j=0; j < scale; j++)
-						((char*) screen->pixels)[screen->pitch * (scale*y+j) + scale*x + i] =
-								((char*) bscreen->pixels)[bscreen->pitch * y + x];
-
-		SDL_UnlockSurface(screen);
-	}
-	SDL_Flip(screen);
+	SDL_UpdateTexture(texture, NULL, pixels, w * sizeof(uint32_t));
+	SDL_RenderClear(renderer);
+	SDL_RenderCopy(renderer, texture, NULL, NULL);
+	SDL_RenderPresent(renderer);
 }
 
 void EmuSDL::getinput() {

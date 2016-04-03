@@ -11,6 +11,7 @@
 #include <exception>
 #include <string>
 #include <cstring>
+#include <iostream>
 #include <boost/lexical_cast.hpp>
 #include "bushandler.h"
 
@@ -19,7 +20,8 @@ public:
 	z80(BusHandler& bh);
 	void reset();
 	uint64_t tick();
-	void interrupt();
+	// return true if acked
+	bool interrupt();
 	char* get_trace();
 	class IllOp: public std::exception
 	{
@@ -32,6 +34,8 @@ public:
 			return x;
 		}
 	};
+	uint32_t readstate(std::istream& in);
+	void writestate(std::ostream& out);
 private:
 	static const uint8_t fS = 1 << 7;
 	static const uint8_t fZ = 1 << 6;
