@@ -17,12 +17,13 @@
 using namespace std;
 namespace po = boost::program_options;
 
+#define COLS 352
+#define LINES 296
 
-
-constexpr SDL_Color zx48k::zxpalette[16];
+constexpr uint32_t zx48k::zxpalette[16];
 
 zx48k::zx48k() :
-		EmuSDL(352, 296, const_cast<SDL_Color*>(zxpalette), 16),
+		EmuSDL(COLS, LINES, hscale=2, wscale=2),
 		cpu(*this),
 		romfile("testrom.bin")
 		{};
@@ -92,7 +93,7 @@ void zx48k::writemem(uint16_t address, uint8_t v) {
 	}
 }
 
-static uint8_t sdlkey2spectrum(SDLKey k) {
+static uint8_t sdlkey2spectrum(SDL_Keycode k) {
 	switch (k) {
 	case SDLK_LSHIFT:
 		return 0 << 3 | 0;
@@ -187,7 +188,7 @@ void zx48k::writeio(uint16_t address, uint8_t v) {
 	} else if ((address & 0x8002) == 0x8000) { //ay
 		cout << "WRITEAY" << "\n";
 	} else {
-		cout << "WRITEIO " << std::hex << (int) address << " " << (int) v << "\n";
+//		cout << "WRITEIO " << std::hex << (int) address << " " << (int) v << "\n";
 	}
 }
 
@@ -220,13 +221,13 @@ void zx48k::scanline(int y) {
 	} else if ((y < 48) || (y >= 240) ) {
 		// TODO unloopize it
 		for (int x=0; x<352; x++) {
-			uint32_t pixel = bscreen->pitch * y + x;
-			((char*) bscreen->pixels)[pixel] = border;
+			uint32_t pixel = COLS * y + x;
+			pixels[pixel] = zxpalette[border];
 		}
 	} else {
 		for (int x = 0; x < 48; x++ ) {
-			uint32_t pixel = bscreen->pitch * y + x;
-			((char*) bscreen->pixels)[pixel] = border;
+			uint32_t pixel = COLS * y + x;
+			pixels[pixel] = zxpalette[border];
 		}
 		for (int xx = 0; xx < 32; xx++) {
 			int yy = y-48;
@@ -250,16 +251,16 @@ void zx48k::scanline(int y) {
 			}
 
 			for (int i = 0; i < 8; i++) {
-				uint32_t pixel = bscreen->pitch * y + 48 + 8*xx + i;
+				uint32_t pixel = COLS * y + 48 + 8*xx + i;
 				bool lit = memory[addr] & (1 << (7-i));
-				((char*) bscreen->pixels)[pixel] = lit ? ink : paper;
+				pixels[pixel] = zxpalette[lit ? ink : paper];
 			}
 		}
 		// TODO unloopize it
 		for (int x = 304; x < 352; x++) {
-			uint32_t pixel = bscreen->pitch * y + x;
-			((char*) bscreen->pixels)[pixel] = border;
-		};
+			uint32_t pixel = COLS * y + x;
+			pixels[pixel] = zxpalette[border];
+		}
 	}
 
 }
