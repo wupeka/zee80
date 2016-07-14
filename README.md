@@ -1,14 +1,16 @@
 Z80 machines emulator
 
-Currently only ZX Spectrum 48k
-
-Usage:
+Usage for zx48k:
  - download 48.rom from somewhere
  - downlaod a TAP file
  - ./zx48k --rom 48.rom --tap file.tap
  - inside - do load "" (j rightshift-p rightshift-p enter)
  - press 'f7' to start tape
  - you can use 'f8' to start turbo mode to speed up tape load
+
+Usage for cpc
+ - download CPC6128.ROM, BASIC_1.1.ROM and AMSDOS_0.5.ROM
+ - ./cpc --floppy floppy.dsk
 
 Keys:
  - f5 - start trace
