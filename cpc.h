@@ -24,23 +24,30 @@ public:
 	void initialize();
 	void run();
 
-	virtual uint32_t readmem(uint16_t address);
-	virtual void writemem(uint16_t address, uint8_t value);
-	virtual uint8_t readio(uint16_t address);
-	virtual void writeio(uint16_t address, uint8_t value);
+	virtual uint32_t readmem(uint16_t address) override;
+	virtual void writemem(uint16_t address, uint8_t value) override;
+	virtual uint8_t readio(uint16_t address) override;
+	virtual void writeio(uint16_t address, uint8_t value) override;
 
 
 private:
 	void scanline();
+	uint8_t sdlkey2cpc(SDL_Keycode k) const;
+
+	static constexpr int BLOCKS = 8;
+	static constexpr int BLOCK_SIZE = 16387;
+	static constexpr int LROM_SIZE = 16387;
+
 	z80 cpu;
+
 	std::map<int, std::string> romfiles;
 
-	fdc765 fdc;
+	mutable fdc765 fdc; // TODO: fix the ugly
 	std::string floppy;
 
 	bool trace = false;
-	uint8_t ram[8][16387]; // 8 blocks of 16384
-	uint8_t lrom[16387];
+	uint8_t ram[BLOCKS][BLOCK_SIZE]; // 8 blocks of 16384
+	uint8_t lrom[LROM_SIZE];
 	uint8_t rammap[4] = { 0, 1, 2, 3 };
 	std::map<uint8_t, std::vector<uint8_t> > urom;
 	uint8_t uromid;
@@ -75,47 +82,11 @@ private:
 	bool flashstate=false;
 
 	std::set<uint8_t> keyspressed;
-	uint8_t sdlkey2cpc(SDL_Keycode k);
-
 
 	float util = 0;
 	bool turbo = false;
 	bool joymode = false;
 	bool debounce = false;
-
-	constexpr static uint32_t cpcpalette[32] = {
-			0x007f7f7f,
-			0x007f7f7f,
-			0x0000ff7f,
-			0x00ffff7f,
-			0x0000007f,
-			0x00ff007f,
-			0x00007f7f,
-			0x00ff7f7f,
-			0x00ff007f,
-			0x00ffff7f,
-			0x00ffff00,
-			0x00ffffff,
-			0x00ff0000,
-			0x00ff00ff,
-			0x00ff7f00,
-			0x00ff7fff,
-			0x0000007f,
-			0x0000ff7f,
-			0x0000ff00,
-			0x0000ffff,
-			0x00000000,
-			0x000000ff,
-			0x00007f00,
-			0x00007fff,
-			0x007f007f,
-			0x007fff7f,
-			0x007fff00,
-			0x007fffff,
-			0x007f0000,
-			0x007f00ff,
-			0x007f7f00,
-			0x007f7fff};
 };
 
 #endif /* ZX48K_H_ */

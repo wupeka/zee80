@@ -11,7 +11,8 @@
 #include <cstring>
 using namespace std;
 
-const std::map<uint8_t, uint8_t> fdc765::cmdlen {
+namespace {
+const std::map<uint8_t, uint8_t> cmdlen {
 	{0x02, 8},
 	{0x03, 2},
 	{0x04, 1},
@@ -28,6 +29,7 @@ const std::map<uint8_t, uint8_t> fdc765::cmdlen {
 	{0x19, 8},
 	{0x1d, 8}
 };
+}
 
 #define MSR_BUSY0 (1<<0)
 #define MSR_BUSY1 (1<<1)
@@ -97,8 +99,7 @@ void fdc765::load(std::string filename) {
 //	31	number of sides	1
 //	32 - 33	unused	2
 //	34 - xx	track size table	bunumber of tracks*number of sides
-	std::ifstream fin;
-	fin.open (filename.c_str(), std::ios::in | std::ios::binary);
+	std::ifstream fin(filename, std::ios::in | std::ios::binary);
 	if (fin.fail()) {
 		throw ifstream::failure("Can't open disk file '" + filename + "'");
 	}
@@ -202,7 +203,7 @@ void fdc765::write(uint8_t v) {
 	}
 }
 
-uint8_t fdc765::read_status() {
+uint8_t fdc765::read_status() const {
 	return msr;
 }
 

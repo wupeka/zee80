@@ -8,6 +8,7 @@
 #include "z80test.h"
 #include "z80.h"
 #include <iostream>
+#include <memory>
 using namespace std;
 z80test::z80test() {
 	string testname;
