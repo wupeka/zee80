@@ -29,6 +29,8 @@
 
 *~
 zx48k
+cpc
+z80test
 
 CMakeCache.txt
 cmake_install.cmake
@@ -37,3 +39,8 @@ CMakeFiles/*
 .cproject
 .project
 core
+
+*.ii
+*.s
+
+*.save
