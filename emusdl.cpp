@@ -10,7 +10,6 @@
 
 EmuSDL::EmuSDL(int w, int h, int hscale, int wscale) : w(w), h(h), wscale(wscale),hscale(hscale) {
 	// TODO Auto-generated constructor stub
-	SDL_Init( SDL_INIT_EVERYTHING );
 	window = SDL_CreateWindow("EmuSDL", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, wscale*w, hscale*h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	renderer = SDL_CreateRenderer(window, -1, 0);
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");  // make the scaled rendering look smoother.
