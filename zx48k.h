@@ -9,6 +9,7 @@
 #define ZX48K_H_
 #include <set>
 #include <string>
+
 #include "bushandler.h"
 #include "emusdl.h"
 #include "z80.h"
@@ -21,10 +22,10 @@ public:
 	void initialize();
 	void run();
 
-	virtual uint32_t readmem(uint16_t address);
-	virtual void writemem(uint16_t address, uint8_t value);
-	virtual uint8_t readio(uint16_t address);
-	virtual void writeio(uint16_t address, uint8_t value);
+	virtual uint32_t readmem(uint16_t address) override;
+	virtual void writemem(uint16_t address, uint8_t value) override;
+	virtual uint8_t readio(uint16_t address) override;
+	virtual void writeio(uint16_t address, uint8_t value) override;
 
 
 private:
@@ -32,7 +33,7 @@ private:
 	z80 cpu;
 	std::string romfile;
 	std::string tapfile;
-	zxtape* tape = NULL;
+	std::unique_ptr<zxtape> tape;
 
 	bool trace = false;
 	uint8_t memory[65536]; // simple linear model

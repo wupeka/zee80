@@ -5,7 +5,6 @@
  *      Author: wpk
  */
 
-#include "zx48k.h"
 #include <strings.h>
 #include <iostream>
 #include <fstream>
@@ -13,6 +12,7 @@
 #include <unistd.h> // TODO remove (usleep)
 #include <boost/program_options.hpp>
 
+#include "zx48k.h"
 
 using namespace std;
 namespace po = boost::program_options;
@@ -26,12 +26,11 @@ zx48k::zx48k() :
 		EmuSDL(COLS, LINES, hscale=2, wscale=2),
 		cpu(*this),
 		romfile("testrom.bin")
-		{};
+		{}
 
 void zx48k::initialize() {
 	memset(memory, 0xaa, 65536);
-	std::ifstream fin;
-	fin.open (romfile.c_str(), std::ios::in | std::ios::binary);
+	std::ifstream fin(romfile.c_str(), std::ios::in | std::ios::binary);
 	if (fin.fail()) {
 		throw ifstream::failure("Can't open ROM file");
 	}
@@ -41,8 +40,8 @@ void zx48k::initialize() {
 	fin.read((char*) memory,len);
 	fin.close();
 	border = 7;
-	if (tapfile != "") {
-		tape = new zxtape(tapfile);
+	if (!tapfile.empty()) {
+		tape = std::make_unique<zxtape>(tapfile);
 	}
 }
 
@@ -364,9 +363,9 @@ void zx48k::run() {
 }
 
 int main(int argc, char ** argv) {
-	zx48k * emu = new zx48k();
-	emu->parse_opts(argc, argv);
-	emu->initialize();
-	emu->run();
+	zx48k emu;
+	emu.parse_opts(argc, argv);
+	emu.initialize();
+	emu.run();
 }
 

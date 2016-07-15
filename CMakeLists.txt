@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 2.8.11)
 project (zee80)
-set(CMAKE_CXX_FLAGS "-std=c++11 -O2 -ggdb -Wall -pg -funroll-loops -save-temps -mtune=native")
+set(CMAKE_CXX_FLAGS "-std=c++14 -O2 -ggdb -Wpedantic -pg -funroll-loops -save-temps -mtune=native")
 add_library (zee80 z80.cpp bushandler.cpp)
 add_executable (zx48k zx48k.cpp zxtape.cpp emusdl.cpp)
 add_executable (cpc cpc.cpp emusdl.cpp fdc765.cpp)
