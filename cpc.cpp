@@ -647,13 +647,13 @@ void CPC::run() {
 		clock_gettime(CLOCK_MONOTONIC, &tv_e);
 		uint64_t real_time = (tv_e.tv_sec - tv_s.tv_sec) * 1000000000 +
 				tv_e.tv_nsec - tv_s.tv_nsec;
-		uint64_t handl_time = d_diff * 250; // 4MHz == 250ns
-		load = 1.0*real_time/handl_time;
+		uint64_t cpu_time = d_diff * 250; // 4MHz == 250ns
+		load = 1.0*real_time/cpu_time;
 		d_diff = 0;
 
-		acc_delay += handl_time - real_time;
+		acc_delay += cpu_time - real_time;
 		if (acc_delay < -250000000) {
-			cout << "Underrun of " << std::dec << acc_delay << " d_diff " << d_diff << " real_time " << real_time << " handl_time " << handl_time << endl;
+			cout << "Underrun of " << std::dec << acc_delay << " d_diff " << d_diff << " real_time " << real_time << " cpu_time " << cpu_time << endl;
 		}
 		if (acc_delay < -250000000 || turbo) {
 			acc_delay = 0;
