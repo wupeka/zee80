@@ -17,27 +17,62 @@
 using namespace std;
 namespace po = boost::program_options;
 
+constexpr size_t cpc::BLOCKS;
+constexpr size_t cpc::BLOCK_SIZE;
+constexpr size_t cpc::LROM_SIZE;
 
-constexpr uint32_t cpc::cpcpalette[32];
-
-#define LINES 305
-#define COLS 760
-#define STARTLINE (0)
+namespace {
+constexpr size_t LINES = 305;
+constexpr size_t COLS = 760;
+constexpr size_t STARTLINE = 0;
+constexpr uint32_t cpcpalette[32] = {
+	0x007f7f7f,
+	0x007f7f7f,
+	0x0000ff7f,
+	0x00ffff7f,
+	0x0000007f,
+	0x00ff007f,
+	0x00007f7f,
+	0x00ff7f7f,
+	0x00ff007f,
+	0x00ffff7f,
+	0x00ffff00,
+	0x00ffffff,
+	0x00ff0000,
+	0x00ff00ff,
+	0x00ff7f00,
+	0x00ff7fff,
+	0x0000007f,
+	0x0000ff7f,
+	0x0000ff00,
+	0x0000ffff,
+	0x00000000,
+	0x000000ff,
+	0x00007f00,
+	0x00007fff,
+	0x007f007f,
+	0x007fff7f,
+	0x007fff00,
+	0x007fffff,
+	0x007f0000,
+	0x007f00ff,
+	0x007f7f00,
+	0x007f7fff};
+}
 
 // BitRePosition
 #define BRP(v, b, n) ((((v) >> (b)) & 0x1) << n)
-cpc::cpc() :
-		EmuSDL(COLS, LINES, hscale=2, wscale=1),
+cpc::cpc(size_t hscale, size_t wscale) :
+		EmuSDL(COLS, LINES, hscale, wscale),
 		cpu(*this)
-		{};
+		{}
 
 void cpc::initialize() {
-	for (auto i = 0; i < 8; i++) {
-		memset(ram[i], 0xaa, sizeof(ram[i]));
+	for (auto i = 0; i < BLOCKS; i++) {
+		memset(ram[i], 0xaa, BLOCK_SIZE);
 	}
 	for (auto romfile: romfiles) {
-		std::ifstream fin;
-		fin.open (romfile.second.c_str(), std::ios::in | std::ios::binary);
+		std::ifstream fin(romfile.second, std::ios::in | std::ios::binary);
 		if (fin.fail()) {
 			throw ifstream::failure("Can't open ROM file" + romfile.second);
 		}
@@ -47,12 +82,12 @@ void cpc::initialize() {
 		if (romfile.first == 256) {
 			fin.read((char*) lrom, len);
 		} else {
-			urom[romfile.first] = std::vector<uint8_t>(16387);
+			urom[romfile.first] = std::vector<uint8_t>(LROM_SIZE);
 			fin.read((char*) urom[romfile.first].data(), len);
 		}
 		fin.close();
 	}
-	if (floppy != "") {
+	if (!floppy.empty()) {
 		fdc.load(floppy);
 	}
 }
@@ -92,29 +127,31 @@ void cpc::parse_opts(int argc, char ** argv) {
 
 }
 
-uint32_t cpc::readmem(uint16_t address) {
-	uint8_t block = address >> 14;
-	uint16_t addr = address & 0x3fff;
+uint32_t cpc::readmem(uint16_t address) const {
+	const uint8_t block = address >> 14;
+	const uint16_t addr = address & 0x3fff;
 	if ((block == 0) && !lr) {
-		if (trace) cout << "READMEM lr " << hex << addr << "\n";
+		if (trace) cout << "READMEM lr " << hex << addr << std::endl;
 		return * ((uint32_t*) (lrom + addr));
 	} else if ((block == 3) && !ur) {
-		if (trace) cout << "READMEM ur " << hex << addr << "\n";
-		return * ((uint32_t*) (urom[uromid].data() + addr));
+		if (trace) cout << "READMEM ur " << hex << addr << std::endl;
+		auto const it = urom.find(uromid);
+		assert(it != urom.end());
+		return * ((uint32_t*) (it->second.data() + addr));
 	} else {
-		if (trace) cout << "READMEM mem " << hex << addr << " block " << (int)block << " realblock " << (int)rammap[block] << "\n";
+		if (trace) cout << "READMEM mem " << hex << addr << " block " << (int)block << " realblock " << (int)rammap[block] << std::endl;
 		return * ((uint32_t*) (ram[rammap[block]] + addr));
 	}
 }
 
 void cpc::writemem(uint16_t address, uint8_t v) {
 	// writes go straight to RAM, no matter what
-	uint8_t block = address >> 14;
+	const uint8_t block = address >> 14;
 	address &= 0x3fff;
 	ram[rammap[block]][address] = v;
 }
 
-uint8_t cpc::sdlkey2cpc(SDL_Keycode k) {
+uint8_t cpc::sdlkey2cpc(SDL_Keycode k) const {
 	switch (k) {
 	case SDLK_UP:
 		if (!joymode) {
@@ -405,13 +442,13 @@ void cpc::writeio(uint16_t address, uint8_t v) {
 
 }
 
-uint8_t cpc::readio(uint16_t address) {
+uint8_t cpc::readio(uint16_t address) const {
 	uint8_t out = 0;
 	switch (address >> 8) {
 	case 0xf4: { // PIO port A - PSG
 		if (psg_reg == 0xe) { // ext A
 			out = 0xff;
-			for (auto sdlkey: keys) {
+			for (auto sdlkey: get_keys()) {
 				uint8_t key = sdlkey2cpc(sdlkey);
 				if ((key >> 3) == kbd_line) {
 					uint8_t kaddr = 1 << (key & 0b111);
@@ -440,7 +477,7 @@ uint8_t cpc::readio(uint16_t address) {
 		break;
 	}
 	}
-	if (trace) cout << "READIO " << hex << address << " " << (int) out << "\n";
+	if (trace) cout << "READIO " << hex << address << " " << (int) out << endl;
 	return out;
 }
 
@@ -448,28 +485,24 @@ void cpc::scanline() {
 	// vcc - vertical char counter
 	// hcc - horizontal char counter, not used
 	// vlc - vertical line counter
-	uint32_t crtc_offset = (((crtcr[12] & 0x3) << 8) + (crtcr[13])) * 2;
-	uint8_t crtc_block = (crtcr[12] >> 4) & 0x3;
+	const uint32_t crtc_offset = (((crtcr[12] & 0x3) << 8) + (crtcr[13])) * 2;
+	const uint8_t crtc_block = (crtcr[12] >> 4) & 0x3;
 
 	// only valid for 8 lines
 	// character row + row offset
-	uint32_t base = (vlc << 11) + ((crtc_offset + (vcc * 2 * crtcr[1])) & 0x7ff);
-	const int sbase = COLS * line;
-	int spx = 0;
+	const uint32_t base = (vlc << 11) + ((crtc_offset + (vcc * 2 * crtcr[1])) & 0x7ff);
 
 	if (vcc >= crtcr[6] && line >= 0) {
-		for (int i=0; i < COLS; i++) {
-			pixels[sbase+i] = pen[16];
-		}
+		set_line(line, pen[16]);
 	} else if (vcc < crtcr[6] && line >=0) { // display line
 		// We have 'COLS' pixels at the screen, we want the content to be in the middle
 		// The content is 8 * 2*crtcr[1] pixels wide
-		for (; spx < (COLS-(16*crtcr[1]))/2; spx++) {
-			pixels[sbase + spx] = pen[16];
-		}
+		const size_t border_width = (COLS-(16*crtcr[1]))/2;
+		draw_line(0, border_width - 1, line, pen[16]);
+		int spx = border_width;
 
 		for (int x = 0; x < 2 * crtcr[1]; x++) {
-			uint8_t p = ram[crtc_block][(base+x) & 0x3fff];
+			const uint8_t p = ram[crtc_block][(base+x) & 0x3fff];
 			// mode 0 - 16 colors, 160 pixels
 			// mode 1 - 4 colors -  320 pixels
 			// mode 2 - 1 color, 640 pixels
@@ -477,33 +510,30 @@ void cpc::scanline() {
 			case 0: {
 				for (int i = 1; i >=0; i--) {
 					const uint32_t c = pen[BRP(p, i, 3) | BRP(p, 4+i, 2) | BRP(p, 2+i, 1) | BRP(p, 6+i, 0)];
-					pixels[sbase + spx++] = c;
-					pixels[sbase + spx++] = c;
-					pixels[sbase + spx++] = c;
-					pixels[sbase + spx++] = c;
+					draw_line(spx, spx+3, line,c);
+					spx += 4;
 				}
 				break;
 			}
 			case 1: {
 				for (int i = 3; i >= 0; i--) {
 					const uint32_t c = pen[BRP(p, i, 1) | BRP(p, 4+i, 0)];
-					pixels[sbase + spx++] = c;
-					pixels[sbase + spx++] = c;
+					draw_line(spx, spx+1, line, c);
+					spx += 2;
 				}
 				break;
 			}
 			case 2: {
 				for (int i = 7; i >=0; i--) {
 					const uint32_t c = pen[BRP(p, i, 0)];
-					pixels[sbase + spx++] = c;
+					set_pixel(spx++, line, c);
 				}
 				break;
 			}
 			}
 		}
-		for (;spx < COLS; spx++) {
-			pixels[sbase + spx] = pen[16];
-		}
+
+		draw_line(spx, COLS - 1, line, pen[16]);
 	}
 
 	if (vlc++ == crtcr[9]) {
@@ -512,9 +542,7 @@ void cpc::scanline() {
 	}
 
 	if (trace && line < STARTLINE + (crtcr[3] >> 4)) {
-		for (int i = 10; i < 15; i++) {
-			pixels[sbase + i] = 0x0050ff50;
-		}
+		draw_line(10, 14, line, 0x0050ff50);
 	}
 
 	if (vcc == crtcr[7] && vlc == 0) { // VSYNC
@@ -535,11 +563,8 @@ void cpc::scanline() {
 	if (in_hsync_int) {
 		if (cpu.interrupt()) { // if acked reset && set bit5 to 0
 			if (trace) {
-				for (int i = 0; i < 100; i++ ) {
-					pixels[sbase+i] = 0x0015c15c;
-				}
+				draw_line(0, 99, line, 0x0015c15c);
 			}
-
 
 			in_hsync_int = false;
 			icounter &= ~(1<<5);
@@ -550,19 +575,14 @@ void cpc::scanline() {
 		if (icounter >= 32 and not interrupted) {
 			cpu.interrupt();
 			if (trace) {
-				for (int i = 0; i < 100; i++ ) {
-					pixels[sbase+i] = 0x00c00fee;
-				}
-
+				draw_line(0, 99, line, 0x00c00fee);
 			}
 		}
 		icounter = 0;
 	} else if (++icounter == 52) {
-		if (not interrupted) {
+		if (!interrupted) {
 			if (trace) {
-				for (int i = 0; i < 100; i++ ) {
-					pixels[sbase+i] =  0x00fade31;
-				}
+				draw_line(0, 99, line, 0x00fade31);
 			}
 			if (!cpu.interrupt()) {
 				in_hsync_int = true;
@@ -600,27 +620,27 @@ void cpc::run() {
 				if (redrawn)
 					continue;
 				// process input
-				getinput();
-				if (keys.count(SDLK_F5)) {
+				readinput();
+				if (key_pressed(SDLK_F5)) {
 					trace = true;
 				}
-				if (keys.count(SDLK_F6)) {
+				if (key_pressed(SDLK_F6)) {
 					trace = false;
 				}
 
-				if (keys.count(SDLK_F8)) {
+				if (key_pressed(SDLK_F8)) {
 					if (!debounce) {
 						turbo = !turbo;
 						debounce = true;
-						cout << string("Turbo mode ") << (turbo ? "on\n" : "off\n");
+						cout << string("Turbo mode ") << (turbo ? "on" : "off") << endl;
 					}
-				} else if (keys.count(SDLK_F9)) {
+				} else if (key_pressed(SDLK_F9)) {
 					if (!debounce) {
 						joymode = !joymode;
 						debounce = true;
-						cout << string("Joy mode ") << (joymode ? "on\n" : "off\n");
+						cout << string("Joy mode ") << (joymode ? "on" : "off") << endl;
 					}
-				} else if (keys.count(SDLK_F10)) {
+				} else if (key_pressed(SDLK_F10)) {
 					if (!debounce) {
 						string f;
 						getline(cin, f);
@@ -631,9 +651,9 @@ void cpc::run() {
 					debounce = false;
 				}
 
-				if (keys.count(SDLK_F4)) {
-					SDL_Quit();
-					exit(0);
+				if (key_pressed(SDLK_F4)) {
+					cout << "Quitting...." << endl;
+					return;
 				}
 				redrawscreen();
 			} else { redrawn = false; };
@@ -673,9 +693,9 @@ void cpc::run() {
 }
 
 int main(int argc, char ** argv) {
-	cpc * emu = new cpc();
-	emu->parse_opts(argc, argv);
-	emu->initialize();
-	emu->run();
+	cpc emu;
+	emu.parse_opts(argc, argv);
+	emu.initialize();
+	emu.run();
 }
 

@@ -8,11 +8,12 @@
 #include "z80test.h"
 #include "z80.h"
 #include <iostream>
+#include <memory>
 using namespace std;
 z80test::z80test() {
 	string testname;
 	cin >> testname;
-	z80* cpu = new z80(*this);
+	unique_ptr<z80> cpu = make_unique<z80>(*this);
 	uint64_t ticks = cpu->readstate(cin);
 	while (true) {
 		int addr;
@@ -37,14 +38,14 @@ z80test::z80test() {
 	cpu->writestate(cout);
 }
 
-uint32_t z80test::readmem(uint16_t address) {
+uint32_t z80test::readmem(uint16_t address) const {
 	return * ((uint32_t*) (memory + address));
 }
 void z80test::writemem(uint16_t address, uint8_t value) {
 	memory[address] = value;
 }
 
-uint8_t z80test::readio(uint16_t address) {
+uint8_t z80test::readio(uint16_t address) const {
 	return address >> 8;
 }
 void z80test::writeio(uint16_t address, uint8_t value) {}
