@@ -28,14 +28,19 @@ public:
 	virtual void writemem(uint16_t address, uint8_t value);
 	virtual uint8_t readio(uint16_t address);
 	virtual void writeio(uint16_t address, uint8_t value);
+	void LoadFloppy(std::string floppy);
 
+	float getLoad() const {
+		return load;
+	}
 
 private:
 	void scanline();
 	z80 cpu;
 	std::map<int, std::string> romfiles;
-
 	fdc765 fdc;
+
+	float load;
 	std::string floppy;
 
 	bool trace = false;

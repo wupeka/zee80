@@ -10,6 +10,7 @@
 
 #include <wx/wx.h>
 #include "cpc.h"
+class CtrlFrame;
 
 class CPCApp : public wxApp {
 public:
@@ -18,6 +19,8 @@ public:
 	virtual bool OnInit();
 	virtual bool ProcessIdle();
 	CPC* emu;
+	CtrlFrame* ctrlframe;
+	uint32_t cycle;
 };
 
 class CtrlFrame: public wxFrame

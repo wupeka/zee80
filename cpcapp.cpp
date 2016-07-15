@@ -25,13 +25,20 @@ bool CPCApp::OnInit() {
 	emu = new CPC();
 	emu->parse_opts(argc, argv);
 	emu->initialize();
-	CtrlFrame *frame = new CtrlFrame("Zee80 CPC", wxPoint(50, 50), wxSize(450, 340), *this);
-	frame->Show( true );
+	ctrlframe = new CtrlFrame("Zee80 CPC", wxPoint(50, 50), wxSize(450, 340), *this);
+	ctrlframe->Show( true );
 	return true;
 }
 
 bool CPCApp::ProcessIdle() {
-	emu->run();
+	for (int i=0; i<10; i++) // TODO do it dynamically? Two event loops horror :/
+		emu->run();
+	if (cycle++ % 100000 == 0) {
+		wxString x;
+		x.Printf("Zee80 CPC load %.2f", emu->getLoad());
+		ctrlframe->SetStatusText(x);
+	}
+
 	return true;
 }
 CPCApp::~CPCApp() {
@@ -44,7 +51,6 @@ CtrlFrame::CtrlFrame(const wxString& title, const wxPoint& pos, const wxSize& si
 	wxButton* OpenFloppy = new wxButton(this, BUTTON_OPEN_FLOPPY, _T("Open Floppy"),
 					    wxDefaultPosition, wxDefaultSize, 0);
 	CreateStatusBar();
-	SetStatusText("Zee80 CPC ");
 }
 void CtrlFrame::OnClose(wxCloseEvent& event)
 {
@@ -60,5 +66,5 @@ void CtrlFrame::OnOpenFloppy(wxCommandEvent& event)
 		       "Disk images (*.dsk)|*.dsk", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
 	if (openFileDialog.ShowModal() == wxID_CANCEL)
 		return;
-	app.emu->fdc.load(openFileDialog.GetPath().ToStdString());
+	app.emu->LoadFloppy(openFileDialog.GetPath().ToStdString());
 }
