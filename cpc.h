@@ -17,9 +17,9 @@
 #include "fdc765.h"
 
 
-class cpc : public BusHandler, public EmuSDL {
+class CPC : public BusHandler, public EmuSDL {
 public:
-	cpc();
+	CPC();
 	void parse_opts(int argc, char ** argv);
 	void initialize();
 	void run();
@@ -82,6 +82,12 @@ private:
 	bool turbo = false;
 	bool joymode = false;
 	bool debounce = false;
+
+	uint64_t lastcycles = 0;
+	uint64_t v_diff = 0;
+	uint64_t d_diff = 0;
+	int64_t acc_delay = 0;
+	struct timespec tv_s, tv_e;
 
 	constexpr static uint32_t cpcpalette[32] = {
 			0x007f7f7f,

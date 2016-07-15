@@ -18,7 +18,7 @@ using namespace std;
 namespace po = boost::program_options;
 
 
-constexpr uint32_t cpc::cpcpalette[32];
+constexpr uint32_t CPC::cpcpalette[32];
 
 #define LINES 305
 #define COLS 760
@@ -26,12 +26,11 @@ constexpr uint32_t cpc::cpcpalette[32];
 
 // BitRePosition
 #define BRP(v, b, n) ((((v) >> (b)) & 0x1) << n)
-cpc::cpc() :
+CPC::CPC() :
 		EmuSDL(COLS, LINES, hscale=2, wscale=1),
-		cpu(*this)
-		{};
+		cpu(*this) {};
 
-void cpc::initialize() {
+void CPC::initialize() {
 	for (auto i = 0; i < 8; i++) {
 		memset(ram[i], 0xaa, sizeof(ram[i]));
 	}
@@ -55,9 +54,10 @@ void cpc::initialize() {
 	if (floppy != "") {
 		fdc.load(floppy);
 	}
+	clock_gettime(CLOCK_MONOTONIC, &tv_s);
 }
 
-void cpc::parse_opts(int argc, char ** argv) {
+void CPC::parse_opts(int argc, char ** argv) {
 	po::options_description desc("Allowed options");
 	desc.add_options()
 		("help", "display this message help message")
@@ -92,7 +92,7 @@ void cpc::parse_opts(int argc, char ** argv) {
 
 }
 
-uint32_t cpc::readmem(uint16_t address) {
+uint32_t CPC::readmem(uint16_t address) {
 	uint8_t block = address >> 14;
 	uint16_t addr = address & 0x3fff;
 	if ((block == 0) && !lr) {
@@ -107,14 +107,14 @@ uint32_t cpc::readmem(uint16_t address) {
 	}
 }
 
-void cpc::writemem(uint16_t address, uint8_t v) {
+void CPC::writemem(uint16_t address, uint8_t v) {
 	// writes go straight to RAM, no matter what
 	uint8_t block = address >> 14;
 	address &= 0x3fff;
 	ram[rammap[block]][address] = v;
 }
 
-uint8_t cpc::sdlkey2cpc(SDL_Keycode k) {
+uint8_t CPC::sdlkey2cpc(SDL_Keycode k) {
 	switch (k) {
 	case SDLK_UP:
 		if (!joymode) {
@@ -299,7 +299,7 @@ uint8_t cpc::sdlkey2cpc(SDL_Keycode k) {
 	}
 }
 
-void cpc::writeio(uint16_t address, uint8_t v) {
+void CPC::writeio(uint16_t address, uint8_t v) {
 	if (trace) cout << "WRITEIO " << hex <<  address << " " << (int) v << endl;
 	switch (address >> 8) {
 	case 0x7f: { // PAL/GA
@@ -405,7 +405,7 @@ void cpc::writeio(uint16_t address, uint8_t v) {
 
 }
 
-uint8_t cpc::readio(uint16_t address) {
+uint8_t CPC::readio(uint16_t address) {
 	uint8_t out = 0;
 	switch (address >> 8) {
 	case 0xf4: { // PIO port A - PSG
@@ -444,7 +444,7 @@ uint8_t cpc::readio(uint16_t address) {
 	return out;
 }
 
-void cpc::scanline() {
+void CPC::scanline() {
 	// vcc - vertical char counter
 	// hcc - horizontal char counter, not used
 	// vlc - vertical line counter
@@ -573,109 +573,94 @@ void cpc::scanline() {
 
 }
 
-void cpc::run() {
-	uint64_t lastcycles = 0;
-	uint64_t v_diff = 0;
-	uint64_t d_diff = 0;
-	int64_t acc_delay = 0;
-	struct timespec tv_s, tv_e;
-	clock_gettime(CLOCK_MONOTONIC, &tv_s);
-	for (;;) {
-		if (trace) {
-			std::cout << cpu.get_trace();
-		}
-		uint64_t cycles = cpu.tick();
-		uint64_t diff = cycles - lastcycles;
-		lastcycles = cycles;
-
-		v_diff += diff;
-		d_diff += diff;
-
-		// draw lines that should be drawn now.
-
-		bool redrawn = false;
-		while (v_diff > 256) { // 64 microseconds == 256 tics @ 4MHz (1 hsync)
-			scanline();
-			if (line == 0) {
-				if (redrawn)
-					continue;
-				// process input
-				getinput();
-				if (keys.count(SDLK_F5)) {
-					trace = true;
-				}
-				if (keys.count(SDLK_F6)) {
-					trace = false;
-				}
-
-				if (keys.count(SDLK_F8)) {
-					if (!debounce) {
-						turbo = !turbo;
-						debounce = true;
-						cout << string("Turbo mode ") << (turbo ? "on\n" : "off\n");
-					}
-				} else if (keys.count(SDLK_F9)) {
-					if (!debounce) {
-						joymode = !joymode;
-						debounce = true;
-						cout << string("Joy mode ") << (joymode ? "on\n" : "off\n");
-					}
-				} else if (keys.count(SDLK_F10)) {
-					if (!debounce) {
-						string f;
-						getline(cin, f);
-						fdc.unload();
-						fdc.load(f);
-					}
-				} else {
-					debounce = false;
-				}
-
-				if (keys.count(SDLK_F4)) {
-					SDL_Quit();
-					exit(0);
-				}
-				redrawscreen();
-			} else { redrawn = false; };
-			v_diff-=256;
-		}
-
-
-		// correct timing:
-		// 'd_diff' cycles should take us d_diff * 250ns, if we're too late - too bad
-		// if we're too soon - wait
-		// do it only if d_diff > 10000 to save time on unnecessary clock_gettimes
-		// TODO move it into emusdl
-		if (d_diff > 100000) {
-			clock_gettime(CLOCK_MONOTONIC, &tv_e);
-			uint64_t real_time = (tv_e.tv_sec - tv_s.tv_sec) * 1000000000 +
-					tv_e.tv_nsec - tv_s.tv_nsec;
-			uint64_t handl_time = d_diff * 250; // 4MHz == 1/250ns
-			d_diff = 0;
-
-			acc_delay += handl_time - real_time;
-			util = (handl_time - real_time)/real_time;
-			if (acc_delay < -250000000) {
-				cout << "Underrun of " << std::dec << acc_delay << " d_diff " << d_diff << " real_time " << real_time << " handl_time " << handl_time << endl;
-			}
-			if (acc_delay < -250000000 || turbo) {
-				acc_delay = 0;
-			}
-
-			if (acc_delay > 1000000) {
-				uint64_t c = acc_delay/1000000;
-				acc_delay -= c*1000000;
-				SDL_Delay(c);
-			}
-			clock_gettime(CLOCK_MONOTONIC, &tv_s);
-		}
+void CPC::run() {
+	if (trace) {
+		std::cout << cpu.get_trace();
 	}
-}
+	uint64_t cycles = cpu.tick();
+	uint64_t diff = cycles - lastcycles;
+	lastcycles = cycles;
 
-int main(int argc, char ** argv) {
-	cpc * emu = new cpc();
-	emu->parse_opts(argc, argv);
-	emu->initialize();
-	emu->run();
+	v_diff += diff;
+	d_diff += diff;
+
+	// draw lines that should be drawn now.
+
+	bool redrawn = false;
+	while (v_diff > 256) { // 64 microseconds == 256 tics @ 4MHz (1 hsync)
+		scanline();
+		if (line == 0) {
+			if (redrawn)
+				continue;
+			// process input
+			getinput();
+			if (keys.count(SDLK_F5)) {
+				trace = true;
+			}
+			if (keys.count(SDLK_F6)) {
+				trace = false;
+			}
+
+			if (keys.count(SDLK_F8)) {
+				if (!debounce) {
+					turbo = !turbo;
+					debounce = true;
+					cout << string("Turbo mode ") << (turbo ? "on\n" : "off\n");
+				}
+			} else if (keys.count(SDLK_F9)) {
+				if (!debounce) {
+					joymode = !joymode;
+					debounce = true;
+					cout << string("Joy mode ") << (joymode ? "on\n" : "off\n");
+				}
+			} else if (keys.count(SDLK_F10)) {
+				if (!debounce) {
+					string f;
+					getline(cin, f);
+					fdc.unload();
+					fdc.load(f);
+				}
+			} else {
+				debounce = false;
+			}
+
+			if (keys.count(SDLK_F4)) {
+				SDL_Quit();
+				exit(0);
+			}
+			redrawscreen();
+		} else { redrawn = false; };
+		v_diff-=256;
+	}
+
+
+	// correct timing:
+	// 'd_diff' cycles should take us d_diff * 250ns, if we're too late - too bad
+	// if we're too soon - wait
+	// do it only if d_diff > 10000 to save time on unnecessary clock_gettimes
+	// TODO move it into emusdl
+	if (d_diff > 100000) {
+		clock_gettime(CLOCK_MONOTONIC, &tv_e);
+		uint64_t real_time = (tv_e.tv_sec - tv_s.tv_sec) * 1000000000 +
+				tv_e.tv_nsec - tv_s.tv_nsec;
+		uint64_t handl_time = d_diff * 250; // 4MHz == 1/250ns
+		d_diff = 0;
+
+		acc_delay += handl_time - real_time;
+		util = (handl_time - real_time)/real_time;
+		if (acc_delay < -250000000) {
+			cout << "Underrun of " << std::dec << acc_delay << " d_diff " << d_diff << " real_time " << real_time << " handl_time " << handl_time << endl;
+		}
+		if (acc_delay < -250000000 || turbo) {
+			acc_delay = 0;
+		}
+
+		if (acc_delay > 1000000) {
+			uint64_t c = acc_delay/1000000;
+			acc_delay -= c*1000000;
+			SDL_Delay(c);
+		}
+		clock_gettime(CLOCK_MONOTONIC, &tv_s);
+	}
 }
 
