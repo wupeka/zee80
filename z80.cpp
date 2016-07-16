@@ -7,8 +7,11 @@
 
 
 #include "z80.h"
+
 #include <iostream>
+#include <iomanip>
 #include <inttypes.h>
+
 constexpr bool z80::parity[];
 
 z80::z80(BusHandler& bh) : bh(bh) {
@@ -62,10 +65,11 @@ uint32_t z80::readstate(std::istream& in) {
 
 void z80::writestate(std::ostream& out) {
 	char p[1024];
-	snprintf(p, 1024, "%02x%02x %04x %04x %04x %02x%02x %04x %04x %04x %04x %04x %04x %04x\n%02x %02x %d %d %d %d %d\n",
+	snprintf(p, 1024, "%02x%02x %04x %04x %04x %02x%02x %04x %04x %04x %04x %04x %04x %04x\n%02x %02x %d %d %d %d %" PRIu64 "\n",
 		 a,f,bc,de,hl,ap, fp, bcp,dep, hlp, ix, iy, sp, pc,
 		 i, r, iff1, iff2, imode, in_halt, cycles);
 	out << p;
+
 }
 
 uint64_t z80::tick() {
@@ -208,7 +212,8 @@ uint8_t z80::i_add8(uint8_t x, uint8_t y, bool carry) {
 		f |= fH;
 	}
 	return ans;
-};
+}
+
 uint8_t z80::i_sub8(uint8_t x, uint8_t y, bool carry) {
 	uint8_t occ = f&fC;
 	uint8_t oc = ((carry && occ) ? 1 : 0);
@@ -225,7 +230,7 @@ uint8_t z80::i_sub8(uint8_t x, uint8_t y, bool carry) {
 		f |= fH;
 	}
 	return ans;
-};
+}
 
 uint8_t z80::i_and8(uint8_t x, uint8_t y) {
 	uint8_t ans = x & y;
@@ -233,21 +238,23 @@ uint8_t z80::i_and8(uint8_t x, uint8_t y) {
 	i_setfSZ8(ans);
 	i_setfP8(ans);
 	return ans;
-};
+}
+
 uint8_t z80::i_or8(uint8_t x, uint8_t y) {
 	uint8_t ans = x | y;
 	f = 0;
 	i_setfSZ8(ans);
 	i_setfP8(ans);
 	return ans;
-};
+}
+
 uint8_t z80::i_xor8(uint8_t x, uint8_t y) {
 	uint8_t ans = x ^ y;
 	f = 0;
 	i_setfSZ8(ans);
 	i_setfP8(ans);
 	return ans;
-};
+}
 
 uint8_t z80::i_inc8(uint8_t x) {
 	uint8_t ans = x+1;
@@ -260,7 +267,7 @@ uint8_t z80::i_inc8(uint8_t x) {
 		f |= fH;
 	}
 	return ans;
-};
+}
 
 uint8_t z80::i_dec8(uint8_t x) {
 	uint8_t ans = x-1;
@@ -274,7 +281,8 @@ uint8_t z80::i_dec8(uint8_t x) {
 		f |= fH;
 	}
 	return ans;
-};
+}
+
 uint16_t z80::i_add16(uint16_t x, uint16_t y, bool carry) {
 
 	uint8_t prevF = f;

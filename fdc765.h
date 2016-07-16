@@ -28,7 +28,7 @@ public:
 	~fdc765();
 	void write(uint8_t v);
 	uint8_t read();
-	uint8_t read_status();
+	uint8_t read_status() const;
 	void load(std::string filename);
 	void unload();
 
@@ -58,7 +58,6 @@ private:
 	uint8_t sides;
 	// sectors are indexed by (track << 16) | (side << 8) | (sectorid)
 	std::map<uint32_t, sector> sectors;
-	static const std::map<uint8_t, uint8_t> cmdlen;
 };
 
 #endif /* FDC765_H_ */

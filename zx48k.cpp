@@ -5,33 +5,56 @@
  *      Author: wpk
  */
 
-#include "zx48k.h"
 #include <strings.h>
 #include <iostream>
 #include <fstream>
-#include <time.h>
+#include <ctime>
+#include <cassert>
 #include <unistd.h> // TODO remove (usleep)
 #include <boost/program_options.hpp>
 
+#include "zx48k.h"
 
 using namespace std;
 namespace po = boost::program_options;
 
-#define COLS 352
-#define LINES 296
+constexpr int zx48k::MEMORY_SIZE;
 
-constexpr uint32_t zx48k::zxpalette[16];
+namespace {
+constexpr int COLS = 352;
+constexpr int LINES = 296;
+constexpr int TOP_BORDER_LINES = 48;
+constexpr int BOTTOM_BORDER_LINES = 56;
+constexpr int LEFT_BORDER_COLS = 48;
+constexpr int RIGHT_BORDER_COLS = 48;
+constexpr uint32_t zxpalette[16] = {
+	0x00000000,
+	0x000000CD,
+	0x00CD0000,
+	0x00CD00CD,
+	0x0000CD00,
+	0x0000CDCD,
+	0x00CDCD00,
+	0x00CDCDCD,
+	0x00000000,
+	0x000000FF,
+	0x00FF0000,
+	0x00FF00FF,
+	0x0000FF00,
+	0x0000FFFF,
+	0x00FFFF00,
+	0x00FFFFFF };
+}
 
 zx48k::zx48k() :
-		EmuSDL(COLS, LINES, hscale=2, wscale=2),
+		EmuSDL(COLS, LINES, 2, 2),
 		cpu(*this),
 		romfile("testrom.bin")
-		{};
+		{}
 
 void zx48k::initialize() {
-	memset(memory, 0xaa, 65536);
-	std::ifstream fin;
-	fin.open (romfile.c_str(), std::ios::in | std::ios::binary);
+	memset(memory, 0xaa, MEMORY_SIZE);
+	std::ifstream fin(romfile, std::ios::in | std::ios::binary);
 	if (fin.fail()) {
 		throw ifstream::failure("Can't open ROM file");
 	}
@@ -78,17 +101,18 @@ void zx48k::parse_opts(int argc, char ** argv) {
 
 uint32_t zx48k::readmem(uint16_t address) {
 	if (trace) {
-		cout << "READMEM " << std::hex << (int) address << " " << (int) (memory[address] & 0xff) << "\n";
+		cout << "READMEM " << std::hex << (int) address << " " << (int) (memory[address] & 0xff) << endl;
 	}
 	return * ((uint32_t*) (memory + address));
 	return memory[address] + (memory[address+1] << 8) + (memory[address+2] << 16) + (memory[address + 3] << 24);
 }
 
 void zx48k::writemem(uint16_t address, uint8_t v) {
+	assert(address < MEMORY_SIZE);
 	if (address >= 0x4000) {
 		memory[address] = v;
 		if (trace) {
-			cout << "WRITEMEM " << std::hex << (int) address << " " << (int) v << "\n";
+			cout << "WRITEMEM " << std::hex << (int) address << " " << (int) v << endl;
 		}
 	}
 }
@@ -197,7 +221,7 @@ uint8_t zx48k::readio(uint16_t address) {
 	if ((address & 0xff) == 0xfe) { // keyboard routines
 		out = 0xbf;
 		uint8_t lines = ~(address >> 8);
-		for (auto sdlkey: keys) {
+		for (auto sdlkey: get_keys()) {
 			uint8_t key = sdlkey2spectrum(sdlkey);
 			if (key != 0xff) {
 				uint8_t kline = 1 << (key >> 3);
@@ -216,7 +240,7 @@ uint8_t zx48k::readio(uint16_t address) {
 }
 
 void zx48k::scanline(int y) {
-	if (y >= 296) { // 16 empty scanlines at the end
+	if (y >= LINES) { // 16 empty scanlines at the end
 			return;
 	} else if ((y < 48) || (y >= 240) ) {
 		// TODO unloopize it
@@ -230,7 +254,7 @@ void zx48k::scanline(int y) {
 			pixels[pixel] = zxpalette[border];
 		}
 		for (int xx = 0; xx < 32; xx++) {
-			int yy = y-48;
+			int yy = y - TOP_BORDER_LINES;
 			// 0 1 0 y7 y6 y2 y1 y0 y5 y4 y3 x4 x3 x2 x1 x0
 			uint16_t addr = (1 << 14) | xx |
 					(((yy >> 3) & 0x7) << 5) |
@@ -295,29 +319,29 @@ void zx48k::run() {
 			if (line >= 312) {
 				line = 0;
 				// process input
-				getinput();
-				if (keys.count(SDLK_F5)) {
+				readinput();
+				if (key_pressed(SDLK_F5)) {
 					trace = true;
 				}
-				if (keys.count(SDLK_F6)) {
+				if (key_pressed(SDLK_F6)) {
 					trace = false;
 				}
-				if (keys.count(SDLK_F7) && tape) {
+				if (key_pressed(SDLK_F7) && tape) {
 					tape->reset();
 					tape->go();
 				}
-				if (keys.count(SDLK_F8)) {
+				if (key_pressed(SDLK_F8)) {
 					if (!debounce) {
 						turbo = !turbo;
 						debounce = true;
-						cout << string("Turbo mode ") << (turbo ? "on\n" : "off\n");
+						cout << string("Turbo mode ") << (turbo ? "on" : "off") << std::endl;
 					}
 				} else {
 					debounce = false;
 				}
-				if (keys.count(SDLK_F4)) {
-					SDL_Quit();
-					exit(0);
+				if (key_pressed(SDLK_F4)) {
+					cout << "Quitting..." << std::endl;
+					return;
 				}
 				cpu.interrupt();
 				if (!turbo) {
