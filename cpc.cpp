@@ -93,6 +93,10 @@ void CPC::initialize() {
 	clock_gettime(CLOCK_MONOTONIC, &tv_s);
 }
 
+void CPC::reset() {
+	cpu.reset();
+}
+
 void CPC::parse_opts(int argc, char ** argv) {
 	po::options_description desc("Allowed options");
 	desc.add_options()
@@ -668,6 +672,8 @@ void CPC::run() {
 
 			if (key_pressed(SDLK_F4)) {
 				cout << "Quitting...." << endl;
+				SDL_Quit();
+				exit(0);
 				return;
 			}
 			redrawscreen();
@@ -690,9 +696,12 @@ void CPC::run() {
 		d_diff = 0;
 
 		acc_delay += cpu_time - real_time;
+		bool x = false;
 		if (acc_delay < -250000000) {
 			cout << "Underrun of " << std::dec << acc_delay << " d_diff " << d_diff << " real_time " << real_time << " cpu_time " << cpu_time << endl;
+			x=true;
 		}
+
 		if (acc_delay < -250000000 || turbo) {
 			acc_delay = 0;
 		}
@@ -702,6 +711,7 @@ void CPC::run() {
 			acc_delay -= c*1000000;
 			SDL_Delay(c);
 		}
+		if (x) cout << "New acc delay" << acc_delay << endl;
 		clock_gettime(CLOCK_MONOTONIC, &tv_s);
 	}
 }

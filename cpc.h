@@ -33,7 +33,7 @@ public:
 	float getLoad() const {
 		return load;
 	}
-
+	void reset();
 private:
 	void scanline();
 	uint8_t sdlkey2cpc(SDL_Keycode k) const;
@@ -77,9 +77,6 @@ private:
 
 	bool lr = false;
 	bool ur = false;
-
-
-
 
 //	uint8_t rom[8][16384]; // same
 	// shortcut memory map

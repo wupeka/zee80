@@ -30,15 +30,18 @@ public:
 private:
 	void OnClose(wxCloseEvent& event);
 	void OnOpenFloppy(wxCommandEvent& event);
+	void OnReset(wxCommandEvent& event);
 	CPCApp& app;
 	wxDECLARE_EVENT_TABLE();
 };
 enum {
-	BUTTON_OPEN_FLOPPY = wxID_HIGHEST + 1
+	BTN_OPEN_FLOPPY = wxID_HIGHEST + 1,
+	BTN_RESET
 };
 
 wxBEGIN_EVENT_TABLE(CtrlFrame, wxFrame)
-EVT_BUTTON(BUTTON_OPEN_FLOPPY, CtrlFrame::OnOpenFloppy)
+EVT_BUTTON(BTN_OPEN_FLOPPY, CtrlFrame::OnOpenFloppy)
+EVT_BUTTON(BTN_RESET, CtrlFrame::OnReset)
 EVT_CLOSE(CtrlFrame::OnClose)
 wxEND_EVENT_TABLE()
 

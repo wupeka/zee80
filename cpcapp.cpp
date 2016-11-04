@@ -48,9 +48,19 @@ CPCApp::~CPCApp() {
 CtrlFrame::CtrlFrame(const wxString& title, const wxPoint& pos, const wxSize& size, CPCApp& app)
 : wxFrame(NULL, wxID_ANY, title, pos, size), app(app)
 {
-	wxButton* OpenFloppy = new wxButton(this, BUTTON_OPEN_FLOPPY, _T("Open Floppy"),
-					    wxDefaultPosition, wxDefaultSize, 0);
+	wxPanel *panel = new wxPanel(this, -1);
+	wxBoxSizer *vbox = new wxBoxSizer(wxVERTICAL);
+
+	wxButton* reset = new wxButton(this, BTN_RESET, _T("Reset"),
+				       wxDefaultPosition, wxDefaultSize, 0);
+	wxButton* openfloppy = new wxButton(this, BTN_OPEN_FLOPPY, _T("Open Floppy"),
+					  wxDefaultPosition, wxDefaultSize, 0);
+	vbox->Add(reset, 0, wxEXPAND);
+	vbox->Add(openfloppy, 0, wxEXPAND);
+	panel->SetSizer(vbox);
+
 	CreateStatusBar();
+	Centre();
 }
 void CtrlFrame::OnClose(wxCloseEvent& event)
 {
@@ -60,11 +70,15 @@ void CtrlFrame::OnClose(wxCloseEvent& event)
 
 void CtrlFrame::OnOpenFloppy(wxCommandEvent& event)
 {
-	std::cout << "OnOpenFloppy";
 	wxFileDialog
 	openFileDialog(this, _("Open DSK file"), "", "",
 		       "Disk images (*.dsk)|*.dsk", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
 	if (openFileDialog.ShowModal() == wxID_CANCEL)
 		return;
 	app.emu->LoadFloppy(openFileDialog.GetPath().ToStdString());
+}
+
+void CtrlFrame::OnReset(wxCommandEvent& event)
+{
+	app.emu->reset();
 }
