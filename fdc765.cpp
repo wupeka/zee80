@@ -145,12 +145,13 @@ void fdc765::parse_track(char *buf, int size, bool extended) {
   for (int i = 0; i < nsectors; i++) {
     cout << "Adding sector " << i << endl;
     //		00	track (equivalent to C parameter in NEC765 commands)
-    //1 		01	side (equivalent to H parameter in NEC765 commands)	1 		02
-    //sector ID (equivalent to R parameter in NEC765 commands)	1 		03	sector
-    //size (equivalent to N parameter in NEC765 commands)	1 		04	FDC
-    //status register 1 (equivalent to NEC765 ST1 status register)	1 		05
-    //FDC status register 2 (equivalent to NEC765 ST2 status register)	1 		06 -
-    //07	actual data length in bytes	2
+    // 1 		01	side (equivalent to H parameter in NEC765 commands)	1
+    // 02 sector ID (equivalent to R parameter in NEC765 commands)	1
+    // 03	sector
+    // size (equivalent to N parameter in NEC765 commands)	1 		04
+    // FDC status register 1 (equivalent to NEC765 ST1 status register)	1
+    // 05 FDC status register 2 (equivalent to NEC765 ST2 status register)
+    // 1 		06 - 07	actual data length in bytes	2
     sector s;
     uint8_t track = sibase[0];
     uint8_t side = sibase[1];
@@ -216,10 +217,10 @@ uint8_t fdc765::read() {
 // sector(s) 06+MT+MF+SK HU TR HD SC SZ LS GP SL <R> S0 S1 S2 TR HD LS SZ read
 // sector(s) 07          HU                       - recalib.seek TP=0 08 - -  S0
 // TP                sense int.state 09+MT+MF    HU TR HD SC SZ LS GP SL <W> S0
-// S1 S2 TR HD LS SZ wr deleted sec(s) 0A+MF       HU                       -  S0
+// S1 S2 TR HD LS SZ wr deleted sec(s) 0A+MF       HU                       - S0
 // S1 S2 TR HD LS SZ read ID 0C+MT+MF+SK HU TR HD SC SZ LS GP SL <R> S0 S1 S2 TR
-// HD LS SZ rd deleted sec(s) 0D+MF       HU SZ NM GP FB          <W> S0 S1 S2 TR
-// HD LS SZ format track 0F          HU TP                    - seek track n
+// HD LS SZ rd deleted sec(s) 0D+MF       HU SZ NM GP FB          <W> S0 S1 S2
+// TR HD LS SZ format track 0F          HU TP                    - seek track n
 // 11+MT+MF+SK HU TR HD SC SZ LS GP SL <W> S0 S1 S2 TR HD LS SZ scan equal
 // 19+MT+MF+SK HU TR HD SC SZ LS GP SL <W> S0 S1 S2 TR HD LS SZ scan low or
 // equal 1D+MT+MF+SK HU TR HD SC SZ LS GP SL <W> S0 S1 S2 TR HD LS SZ scan high

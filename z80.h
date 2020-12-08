@@ -23,6 +23,7 @@ public:
   // return true if acked
   bool interrupt(uint8_t data);
   char *get_trace();
+
   class IllOp : public std::exception {
   public:
     IllOp(uint16_t pc) : pc(pc){};
@@ -35,44 +36,10 @@ public:
   };
   uint32_t readstate(std::istream &in);
   void writestate(std::ostream &out);
+  void addtrap(uint16_t where);
 
 private:
-  static const uint8_t fS = 1 << 7;
-  static const uint8_t fZ = 1 << 6;
-  static const uint8_t fF5 = 1 << 5;
-  static const uint8_t fH = 1 << 4;
-  static const uint8_t fF3 = 1 << 3;
-  static const uint8_t fPV = 1 << 2;
-  static const uint8_t fN = 1 << 1;
-  static const uint8_t fC = 1;
-
-  static constexpr bool parity[256] = {
-      true,  false, false, true,  false, true,  true,  false, false, true,
-      true,  false, true,  false, false, true,  false, true,  true,  false,
-      true,  false, false, true,  true,  false, false, true,  false, true,
-      true,  false, false, true,  true,  false, true,  false, false, true,
-      true,  false, false, true,  false, true,  true,  false, true,  false,
-      false, true,  false, true,  true,  false, false, true,  true,  false,
-      true,  false, false, true,  false, true,  true,  false, true,  false,
-      false, true,  true,  false, false, true,  false, true,  true,  false,
-      true,  false, false, true,  false, true,  true,  false, false, true,
-      true,  false, true,  false, false, true,  true,  false, false, true,
-      false, true,  true,  false, false, true,  true,  false, true,  false,
-      false, true,  false, true,  true,  false, true,  false, false, true,
-      true,  false, false, true,  false, true,  true,  false, false, true,
-      true,  false, true,  false, false, true,  true,  false, false, true,
-      false, true,  true,  false, true,  false, false, true,  false, true,
-      true,  false, false, true,  true,  false, true,  false, false, true,
-      true,  false, false, true,  false, true,  true,  false, false, true,
-      true,  false, true,  false, false, true,  false, true,  true,  false,
-      true,  false, false, true,  true,  false, false, true,  false, true,
-      true,  false, true,  false, false, true,  false, true,  true,  false,
-      false, true,  true,  false, true,  false, false, true,  false, true,
-      true,  false, true,  false, false, true,  true,  false, false, true,
-      false, true,  true,  false, false, true,  true,  false, true,  false,
-      false, true,  true,  false, false, true,  false, true,  true,  false,
-      true,  false, false, true,  false, true,  true,  false, false, true,
-      true,  false, true,  false, false, true};
+  std::vector<uint16_t> traps;
 
   uint8_t *regaddr(uint8_t r);
   uint16_t *regaddr16(uint8_t r);
@@ -300,6 +267,43 @@ private:
 
   uint8_t i_bits_setresm(uint8_t op, uint16_t addr);
   uint8_t i_bits_setresr(uint8_t op);
+
+  static const uint8_t fS = 1 << 7;
+  static const uint8_t fZ = 1 << 6;
+  static const uint8_t fF5 = 1 << 5;
+  static const uint8_t fH = 1 << 4;
+  static const uint8_t fF3 = 1 << 3;
+  static const uint8_t fPV = 1 << 2;
+  static const uint8_t fN = 1 << 1;
+  static const uint8_t fC = 1;
+
+  static constexpr bool parity[256] = {
+      true,  false, false, true,  false, true,  true,  false, false, true,
+      true,  false, true,  false, false, true,  false, true,  true,  false,
+      true,  false, false, true,  true,  false, false, true,  false, true,
+      true,  false, false, true,  true,  false, true,  false, false, true,
+      true,  false, false, true,  false, true,  true,  false, true,  false,
+      false, true,  false, true,  true,  false, false, true,  true,  false,
+      true,  false, false, true,  false, true,  true,  false, true,  false,
+      false, true,  true,  false, false, true,  false, true,  true,  false,
+      true,  false, false, true,  false, true,  true,  false, false, true,
+      true,  false, true,  false, false, true,  true,  false, false, true,
+      false, true,  true,  false, false, true,  true,  false, true,  false,
+      false, true,  false, true,  true,  false, true,  false, false, true,
+      true,  false, false, true,  false, true,  true,  false, false, true,
+      true,  false, true,  false, false, true,  true,  false, false, true,
+      false, true,  true,  false, true,  false, false, true,  false, true,
+      true,  false, false, true,  true,  false, true,  false, false, true,
+      true,  false, false, true,  false, true,  true,  false, false, true,
+      true,  false, true,  false, false, true,  false, true,  true,  false,
+      true,  false, false, true,  true,  false, false, true,  false, true,
+      true,  false, true,  false, false, true,  false, true,  true,  false,
+      false, true,  true,  false, true,  false, false, true,  false, true,
+      true,  false, true,  false, false, true,  true,  false, false, true,
+      false, true,  true,  false, false, true,  true,  false, true,  false,
+      false, true,  true,  false, false, true,  false, true,  true,  false,
+      true,  false, false, true,  false, true,  true,  false, false, true,
+      true,  false, true,  false, false, true};
 };
 
 #endif /* Z80_H_ */

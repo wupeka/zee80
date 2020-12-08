@@ -49,6 +49,9 @@ zx48k::zx48k()
     printf("%s\n", SDL_GetError());
   }
   clock_gettime(CLOCK_MONOTONIC, &lastAyWrite);
+  // Tape load traps
+  cpu.addtrap(0x056c);
+  cpu.addtrap(0x0112);
 }
 
 void zx48k::initialize() {
@@ -237,7 +240,8 @@ void zx48k::writeio(uint16_t address, uint8_t v) {
     processAudio();
     ay->writeRegister(ayport, v);
   } else {
-    cout << "WRITEIO to unknown port " << std::hex << (int)address << " " << (int)v << "\n";
+    cout << "WRITEIO to unknown port " << std::hex << (int)address << " "
+         << (int)v << "\n";
   }
 }
 
@@ -319,6 +323,11 @@ void zx48k::dump() {
   std::ofstream fout("memdump", std::ios::out | std::ios::binary);
   fout.write((char *)memory, MEMORY_SIZE);
   fout.close();
+}
+
+bool zx48k::trap(uint16_t pc) {
+  std::cout << "Trap at " << std::hex << pc << std::endl;
+  return false;
 }
 
 void zx48k::run() {

@@ -88,6 +88,15 @@ uint64_t z80::tick() {
     cycles += 4;
     return cycles;
   }
+  for (auto trap : traps) {
+    if (pc == trap) {
+      if (bh.trap(pc)) {
+        // It was trapped, who knows what happened in the meantime, we don't
+        // care about the time for now.
+        return 0;
+      }
+    }
+  }
   instrv = bh.readmem(pc);
   bool ei_was_waiting = ei_waiting;
   ei_waiting = false;
@@ -120,6 +129,8 @@ char *z80::get_trace() {
            (op >> 16) & 0xff, (op >> 24) & 0xff);
   return out;
 }
+
+void z80::addtrap(uint16_t addr) { traps.push_back(addr); }
 
 bool z80::interrupt(uint8_t data) {
   if (iff1) {
@@ -1274,14 +1285,16 @@ void z80::op_EXTD() {
         i_setfSZ8(a);
         break;
       } else if (op == 0x6f) { // rld
-        //				The contents of the low order four bits (bits
-        //3, 2, 1, and 0) of the memory 				location (HL) are copied to the high
-        //order four bits (7, 6, 5, and 4) of that 				same memory location; the
-        //previous contents of those high order four bits 				are copied to the low
-        //order four bits of the Accumulator (register A); and 				the previous
-        //contents of the low order four bits of the Accumulator are 				copied to
-        //the low order four bits of memory location (HL). The contents of 				the
-        //high order bits of the Accumulator are unaffected.
+        //				The contents of the low order four bits
+        //(bits 3, 2, 1, and 0) of the memory
+        // location (HL) are copied to the high order four bits (7, 6, 5, and 4)
+        // of that 				same memory location; the
+        // previous contents of those high order four bits
+        // are copied to the low order four bits of the Accumulator (register A);
+        // and 				the previous contents of the low order
+        // four bits of the Accumulator are 				copied
+        // to the low order four bits of memory location (HL). The contents of
+        // the high order bits of the Accumulator are unaffected.
         uint8_t hlx = bh.readmem(hl);
         uint8_t ax = a & 0x0f;
         a = (a & 0xf0) | (hlx >> 4);
@@ -1702,8 +1715,8 @@ void z80::op_II() {
     break;
   }
   default:
-    std::cout << "Illegal DD/ED opcode " << std::hex << (int)instr << " " << (int)op
-              << "\n";
+    std::cout << "Illegal DD/ED opcode " << std::hex << (int)instr << " "
+              << (int)op << "\n";
     // just ignore the prefix and move to the next instruction
     pc -= 1;
     cycles -= 4;
