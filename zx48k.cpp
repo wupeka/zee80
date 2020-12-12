@@ -55,7 +55,7 @@ zx48k::zx48k()
 }
 
 void zx48k::initialize() {
-  memset(memory, 0xff, MEMORY_SIZE);
+//  memset(memory, 0xff, MEMORY_SIZE);
   std::ifstream fin(romfile, std::ios::in | std::ios::binary);
   if (fin.fail()) {
     throw ifstream::failure("Can't open ROM file");
@@ -98,8 +98,8 @@ void zx48k::parse_opts(int argc, char **argv) {
   }
 }
 
-uint32_t zx48k::readmem(uint16_t address) {
-  if (trace) {
+uint32_t zx48k::readmem(uint16_t address, bool dotrace) {
+  if (trace && dotrace) {
     cout << "READMEM " << std::hex << (int)address << " "
          << (int)(memory[address] & 0xff) << endl;
   }
@@ -108,11 +108,11 @@ uint32_t zx48k::readmem(uint16_t address) {
          (memory[address + 2] << 16) + (memory[address + 3] << 24);
 }
 
-void zx48k::writemem(uint16_t address, uint8_t v) {
+void zx48k::writemem(uint16_t address, uint8_t v, bool dotrace) {
   assert(address < MEMORY_SIZE);
   if (address >= 0x4000) {
     memory[address] = v;
-    if (trace) {
+    if (trace && dotrace) {
       cout << "WRITEMEM " << std::hex << (int)address << " " << (int)v << endl;
     }
   }
@@ -326,7 +326,7 @@ void zx48k::dump() {
 }
 
 bool zx48k::trap(uint16_t pc) {
-  std::cout << "Trap at " << std::hex << pc << std::endl;
+//  std::cout << "Trap at " << std::hex << pc << std::endl;
   return false;
 }
 
@@ -341,6 +341,7 @@ void zx48k::run() {
   bool audioStarted = false;
   struct timespec tv_s, tv_e;
   clock_gettime(CLOCK_MONOTONIC, &tv_s);
+  SDL_Keycode debounce;
   for (;;) {
     if (trace) {
       std::cout << cpu.get_trace();
@@ -350,7 +351,8 @@ void zx48k::run() {
     lastcycles = cycles;
     if (tape) {
       if (!tape->update_ticks(diff)) {
-        turbo = false;
+         turbo = false;
+         trace = true;
       }
     }
 
@@ -372,30 +374,31 @@ void zx48k::run() {
         readinput();
         if (key_pressed(SDLK_F5)) {
           trace = true;
-        }
-        if (key_pressed(SDLK_F6)) {
+        } else if (key_pressed(SDLK_F6)) {
           trace = false;
-        }
-        if (key_pressed(SDLK_F9)) {
-          dump();
-        }
-        if (key_pressed(SDLK_F7) && tape) {
-          tape->reset();
-          tape->go();
-        }
-        if (key_pressed(SDLK_F8)) {
-          if (!debounce) {
+        } else if (key_pressed(SDLK_F9)) {
+          if (debounce != SDLK_F9) {
+            debounce = SDLK_F9;
+            dump();
+          }
+        } else if (key_pressed(SDLK_F7) && tape) {
+          if (debounce != SDLK_F7) {
+            debounce = SDLK_F7;
+            tape->reset();
+            tape->go();
+          }
+        } else if (key_pressed(SDLK_F8)) {
+          if (debounce != SDLK_F8) {
             turbo = !turbo;
-            debounce = true;
+            debounce = SDLK_F8;
             cout << string("Turbo mode ") << (turbo ? "on" : "off")
                  << std::endl;
           }
-        } else {
-          debounce = false;
-        }
-        if (key_pressed(SDLK_F4)) {
+        } else if (key_pressed(SDLK_F4)) {
           cout << "Quitting..." << std::endl;
           return;
+        } else if (keys_pressed()) {
+          debounce = 0;
         }
         cpu.interrupt(0xff);
         if (!turbo) {

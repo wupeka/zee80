@@ -12,8 +12,8 @@
 class BusHandler {
 public:
   virtual ~BusHandler(){};
-  virtual uint32_t readmem(uint16_t address) = 0;
-  virtual void writemem(uint16_t address, uint8_t value) = 0;
+  virtual uint32_t readmem(uint16_t address, bool dotrace=true) = 0;
+  virtual void writemem(uint16_t address, uint8_t value, bool dotrace=true) = 0;
   virtual uint8_t readio(uint16_t address) = 0;
   virtual void writeio(uint16_t address, uint8_t value) = 0;
   virtual bool trap(uint16_t pc) { return false; };

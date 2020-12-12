@@ -19,8 +19,8 @@ zxtape::zxtape(string filename) {
   file.seekg(0, std::ios_base::end);
   len = file.tellg();
   file.seekg(0);
-  buf = new char[len];
-  file.read(buf, len);
+  buf = new unsigned char[len];
+  file.read((char*)buf, len);
   file.close();
   reset();
 }
@@ -36,7 +36,11 @@ void zxtape::newblock() {
     blockstate = PREPILOT;
     blocklen = *((uint16_t *)&buf[blockoffs]);
     blockoffs += 2;
-    std::cout << "New tape block length " << blocklen << std::endl;
+    std::cout << "New tape block length " << std::dec << blocklen << " offs " << blockoffs << " ";
+    for (auto i = 0; i < 18; i++) {
+      std::cout << std::hex << (int)buf[blockoffs + i] << std::dec <<  " ";
+    }
+    std::cout << std::endl;
   }
 }
 void zxtape::reset() {

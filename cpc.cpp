@@ -98,7 +98,7 @@ void CPC::parse_opts(int argc, char **argv) {
 
 void CPC::LoadFloppy(std::string floppy) { fdc.load(floppy); }
 
-uint32_t CPC::readmem(uint16_t address) {
+uint32_t CPC::readmem(uint16_t address, bool dotrace) {
   uint8_t block = address >> 14;
   uint16_t addr = address & 0x3fff;
   if ((block == 0) && !lr) {
@@ -119,7 +119,7 @@ uint32_t CPC::readmem(uint16_t address) {
   }
 }
 
-void CPC::writemem(uint16_t address, uint8_t v) {
+void CPC::writemem(uint16_t address, uint8_t v, bool dotrace) {
   // writes go straight to RAM, no matter what
   const uint8_t block = address >> 14;
   address &= 0x3fff;

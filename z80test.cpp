@@ -39,10 +39,10 @@ z80test::z80test() {
   cpu->writestate(cout);
 }
 
-uint32_t z80test::readmem(uint16_t address) {
+uint32_t z80test::readmem(uint16_t address, bool dotrace) {
   return *((uint32_t *)(memory + address));
 }
-void z80test::writemem(uint16_t address, uint8_t value) {
+void z80test::writemem(uint16_t address, uint8_t value, bool dotrace) {
   memory[address] = value;
 }
 

@@ -17,7 +17,28 @@ static uint8_t zero;
 z80::z80(BusHandler &bh) : bh(bh) { reset(); }
 
 void z80::reset() {
-  pc = 0;
+/*  pc = 0x605;
+  bh.writemem(0x5c74, 0xe1);
+  bh.writemem(0x5c5d, 0xcd);
+  bh.writemem(0x5ccd, 0x22);
+  a=0x1b;
+  f=0b01010010;
+  i=0x3f;
+  iff1=true;
+  iff2=true;
+  imode=1;
+  bc=0xffcf;
+  de=0x5c92;
+  hl=0x5ccd;
+  ap=0x00;
+  fp=0x44;
+  bcp=0x1721;
+  dep=0x369b;
+  ix=0x3d4;
+  iy=0x5c3a;
+  sp=0xff52;
+  pc = 0; */
+
   imode = 0;
   iff1 = false;
   iff2 = false;
@@ -114,15 +135,15 @@ uint64_t z80::tick() {
 
 char *z80::get_trace() {
   static char out[200];
-  uint32_t op = bh.readmem(pc); // TODO what about gameboy? IO-mapped PC?
-  uint32_t stk = bh.readmem(sp);
+  uint32_t op = bh.readmem(pc, false); // TODO what about gameboy? IO-mapped PC?
+  uint32_t stk = bh.readmem(sp, false);
   snprintf(out, 200,
            "%.16" PRIu64
-           " PC=%04x A=%02x F=%d%d%d%d%d%d I=%02x IFF=%d%d IM=%d BC=%04x "
+           " PC=%04x A=%02x F=%02x F=%d%d%d%d%d%d%d%d I=%02x IFF=%d%d IM=%d BC=%04x "
            "DE=%04x HL=%04x AF'=%02x%02x BC'=%04x DE'=%04x HL'=%04x IX=%04x "
            "IY=%04x SP=%04x (SP)=%02x%02x%02x%02x OPC=%02x%02x%02x%02x\n",
-           cycles, pc, a, ((f & fS) ? 1 : 0), ((f & fZ) ? 1 : 0),
-           ((f & fH) ? 1 : 0), ((f & fPV) ? 1 : 0), ((f & fN) ? 1 : 0),
+           cycles, pc, a, f, ((f & fS) ? 1 : 0), ((f & fZ) ? 1 : 0),
+           ((f & fF5) ? 1 : 0), ((f & fH) ? 1 : 0), ((f & fF3) ? 1 : 0), ((f & fPV) ? 1 : 0), ((f & fN) ? 1 : 0),
            ((f & fC) ? 1 : 0), i, iff1, iff2, imode, bc, de, hl, ap, fp, bcp,
            dep, hlp, ix, iy, sp, stk & 0xff, (stk >> 8) & 0xff,
            (stk >> 16) & 0xff, (stk >> 24) & 0xff, op & 0xff, (op >> 8) & 0xff,
@@ -1145,7 +1166,8 @@ void z80::op_EXTD() {
       uint8_t v = bh.readio(bc & 0xff);
       bh.writemem(hl, v);
       hl += s;
-      bc = (((bc >> 8) - 1) << 8) | (bc & 0xff);
+      uint8_t *b = ((uint8_t *)&bc) + 1;
+      *b = i_dec8(*b);
       if (r && ((bc >> 8) != 0)) {
         cycles += 5;
         pc -= 2;
@@ -1157,8 +1179,8 @@ void z80::op_EXTD() {
       uint8_t v = bh.readmem(hl);
       bh.writeio(bc, v);
       hl += s;
-      i_dec8(bc);
-      //			bc = (( (bc >> 8) -1) << 8) | (bc & 0xff);
+      uint8_t *b = ((uint8_t *)&bc) + 1;
+      *b = i_dec8(*b);
       if (r && ((bc >> 8) != 0)) {
         cycles += 5;
         pc -= 2;

@@ -23,8 +23,8 @@ public:
   void initialize();
   void run();
 
-  virtual uint32_t readmem(uint16_t address) override;
-  virtual void writemem(uint16_t address, uint8_t value) override;
+  virtual uint32_t readmem(uint16_t address, bool dotrace) override;
+  virtual void writemem(uint16_t address, uint8_t value, bool dotrace) override;
   virtual uint8_t readio(uint16_t address) override;
   virtual void writeio(uint16_t address, uint8_t value) override;
   virtual bool trap(uint16_t pc) override;
@@ -60,7 +60,6 @@ private:
   std::set<uint8_t> keyspressed;
 
   bool turbo = false;
-  bool debounce = false;
   std::ofstream ff;
 };
 

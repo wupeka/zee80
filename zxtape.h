@@ -23,7 +23,7 @@ private:
   void flip();
   void newblock();
   std::ifstream file;
-  char *buf;
+  unsigned char *buf;
   uint32_t len;
   enum { PAUSE, RUNNING, END } state = PAUSE;
   enum { PREPILOT, PILOT, SYNC, DATA } blockstate = PILOT;
