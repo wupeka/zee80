@@ -37,6 +37,7 @@ private:
   void processAudio();
 
   struct timespec lastAyWrite;
+  struct timespec lastEarChange;
 
   void scanline(int y);
   void dump();
@@ -45,11 +46,13 @@ private:
   std::string romfile;
   std::string tapfile;
   zxtape *tape = NULL;
+  uint64_t lastcycles = 0;
 
   bool trace = false;
   uint8_t memory[MEMORY_SIZE]; // simple linear model
-  bool ear = 0;
-  bool mic = 0;
+  bool ear = false;
+  std::vector<std::pair<bool, uint64_t> > earStates;
+  bool mic = false;
   uint8_t border : 3;
   bool flashstate = false;
   // the 'keycode' is :

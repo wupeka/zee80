@@ -49,6 +49,7 @@ zx48k::zx48k()
     printf("%s\n", SDL_GetError());
   }
   clock_gettime(CLOCK_MONOTONIC, &lastAyWrite);
+  clock_gettime(CLOCK_MONOTONIC, &lastEarChange);
   // Tape load traps
   cpu.addtrap(0x056c);
   cpu.addtrap(0x0112);
@@ -210,7 +211,7 @@ void zx48k::processAudio() {
   clock_gettime(CLOCK_MONOTONIC, &tv_e);
   uint64_t proc_time = (tv_e.tv_sec - lastAyWrite.tv_sec) * NSEC_PER_SEC +
                        tv_e.tv_nsec - lastAyWrite.tv_nsec;
-  if (proc_time > 10000) {
+  if (proc_time > 100000) {
     uint64_t samples = (proc_time * 44100) / NSEC_PER_SEC;
     uint64_t proc_ns = (samples * NSEC_PER_SEC) / 44100;
     lastAyWrite.tv_nsec += proc_ns;
@@ -220,6 +221,27 @@ void zx48k::processAudio() {
     }
     ymsample buf[2 * samples];
     ay->updateStereo(buf, samples);
+    uint64_t samps = 0;
+    while (!earStates.empty()) {
+      auto x = earStates.front();
+      earStates.erase(earStates.begin());
+      uint64_t samps_to_go = (x.second * 44100) / NSEC_PER_SEC;
+      if (x.first) {
+        int i;
+        for (i = 0; i < 2*samps_to_go && i + 2*samps < 2*samples; i++) {
+          buf[i + 2*samps] += 0x1fff;
+        }
+        if (i < 2*samps_to_go) {
+          x.second -= (((2*samps_to_go - i)/2) * NSEC_PER_SEC)/44100;
+          earStates.insert(earStates.begin(), x);
+          break;
+        }
+      }
+      samps += samps_to_go;
+    }
+    if (samps > 0) {
+      std::cout << samps << " " << samples << std::endl;
+    }
     ff.write((char *)buf, 2 * sizeof(ymsample) * samples);
     int i = SDL_QueueAudio(sdldev, buf, 2 * sizeof(ymsample) * samples);
     if (i != 0) {
@@ -230,7 +252,15 @@ void zx48k::processAudio() {
 
 void zx48k::writeio(uint16_t address, uint8_t v) {
   if ((address & 0x1) == 0) { // ULA, might be & 0xff == 0xfe
-    ear = v & 0x10;
+    if (ear != (bool)(v & 0x10)) {
+      ear = v & 0x10;
+      struct timespec tv_e;
+      clock_gettime(CLOCK_MONOTONIC, &tv_e);
+      uint64_t proc_time = (tv_e.tv_sec - lastEarChange.tv_sec) * NSEC_PER_SEC +
+                           tv_e.tv_nsec - lastEarChange.tv_nsec;
+      earStates.push_back(std::make_pair(ear, proc_time));
+      lastEarChange = tv_e;
+    }
     mic = v & 0x08;
     border = v & 0x07;
   } else if (address == 0xfffd) {
@@ -331,7 +361,6 @@ bool zx48k::trap(uint16_t pc) {
 }
 
 void zx48k::run() {
-  uint64_t lastcycles = 0;
   int line = 0;
   int frame = 0;
   uint64_t v_diff = 0;
@@ -352,7 +381,7 @@ void zx48k::run() {
     if (tape) {
       if (!tape->update_ticks(diff)) {
          turbo = false;
-         trace = true;
+//         trace = true;
       }
     }
 
