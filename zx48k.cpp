@@ -49,7 +49,7 @@ zx48k::zx48k()
     printf("%s\n", SDL_GetError());
   }
   clock_gettime(CLOCK_MONOTONIC, &lastAyWrite);
-  clock_gettime(CLOCK_MONOTONIC, &lastEarChange);
+  
   // Tape load traps
   cpu.addtrap(0x056c);
   cpu.addtrap(0x0112);
@@ -228,11 +228,12 @@ void zx48k::processAudio() {
       uint64_t samps_to_go = (x.second * 44100) / NSEC_PER_SEC;
       if (x.first) {
         int i;
-        for (i = 0; i < 2*samps_to_go && i + 2*samps < 2*samples; i++) {
-          buf[i + 2*samps] += 0x1fff;
+        for (i = 0; i < samps_to_go && i + samps < samples; i++) {
+          buf[2*(samps + i)] += 0x3fff;
+          buf[2*(samps + i) + 1] += 0x3fff;
         }
-        if (i < 2*samps_to_go) {
-          x.second -= (((2*samps_to_go - i)/2) * NSEC_PER_SEC)/44100;
+        if (i < samps_to_go) {
+          x.second -= ((samps_to_go - i) * NSEC_PER_SEC)/44100;
           earStates.insert(earStates.begin(), x);
           break;
         }
@@ -254,12 +255,10 @@ void zx48k::writeio(uint16_t address, uint8_t v) {
   if ((address & 0x1) == 0) { // ULA, might be & 0xff == 0xfe
     if (ear != (bool)(v & 0x10)) {
       ear = v & 0x10;
-      struct timespec tv_e;
-      clock_gettime(CLOCK_MONOTONIC, &tv_e);
-      uint64_t proc_time = (tv_e.tv_sec - lastEarChange.tv_sec) * NSEC_PER_SEC +
-                           tv_e.tv_nsec - lastEarChange.tv_nsec;
-      earStates.push_back(std::make_pair(ear, proc_time));
-      lastEarChange = tv_e;
+      uint64_t proc_time = lastcycles - lastEarChange;
+      cout << "Proc time " << proc_time << endl;
+      earStates.push_back(std::make_pair(ear, (proc_time*285)));
+      lastEarChange = lastcycles;
     }
     mic = v & 0x08;
     border = v & 0x07;

@@ -37,7 +37,7 @@ private:
   void processAudio();
 
   struct timespec lastAyWrite;
-  struct timespec lastEarChange;
+  uint64_t lastEarChange;
 
   void scanline(int y);
   void dump();
