@@ -15,6 +15,34 @@
 #include <iostream>
 #include <string>
 
+struct z80_regs {
+  // registers
+  uint8_t a;
+  uint8_t f;
+  //	uint8_t b;
+  uint8_t i;
+  uint8_t r;
+  bool iff1;
+  bool iff2;
+    
+  uint16_t bc;
+  uint16_t de;
+  uint16_t hl;
+    
+  uint8_t ap;
+  uint8_t fp;
+  uint16_t bcp;
+  uint16_t dep;
+  uint16_t hlp;
+   
+  uint16_t pc;
+  uint16_t sp;
+  uint16_t ix;
+  uint16_t iy;
+
+  uint8_t imode;
+};
+
 class z80 {
 public:
   z80(BusHandler &bh);
@@ -37,6 +65,8 @@ public:
   uint32_t readstate(std::istream &in);
   void writestate(std::ostream &out);
   void addtrap(uint16_t where);
+  struct z80_regs get_regs();
+  void set_regs(struct z80_regs regs);
 
 private:
   std::vector<uint16_t> traps;
@@ -45,31 +75,8 @@ private:
   uint16_t *regaddr16(uint8_t r);
 
   BusHandler &bh;
-  // registers
-  uint8_t a;
-  uint8_t f;
-  //	uint8_t b;
-  uint8_t i;
-  uint8_t r;
-  bool iff1;
-  bool iff2;
+  struct z80_regs R;
 
-  uint16_t bc;
-  uint16_t de;
-  uint16_t hl;
-
-  uint8_t ap;
-  uint8_t fp;
-  uint16_t bcp;
-  uint16_t dep;
-  uint16_t hlp;
-
-  uint16_t pc;
-  uint16_t sp;
-  uint16_t ix;
-  uint16_t iy;
-
-  uint8_t imode;
   bool in_halt = false;
   // used for every tick
   uint64_t cycles = 0; // number of cycles taken

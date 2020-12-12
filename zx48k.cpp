@@ -52,7 +52,6 @@ zx48k::zx48k()
   
   // Tape load traps
   cpu.addtrap(0x056c);
-  cpu.addtrap(0x0112);
 }
 
 void zx48k::initialize() {
@@ -356,6 +355,9 @@ void zx48k::dump() {
 
 bool zx48k::trap(uint16_t pc) {
 //  std::cout << "Trap at " << std::hex << pc << std::endl;
+//  return false;
+//  dump();
+//  std::cout << "DUMP DUMP DUMP\n";
   return false;
 }
 
@@ -379,7 +381,7 @@ void zx48k::run() {
     lastcycles = cycles;
     if (tape) {
       if (!tape->update_ticks(diff)) {
-         turbo = false;
+//         turbo = false;
 //         trace = true;
       }
     }
