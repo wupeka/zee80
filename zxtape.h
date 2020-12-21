@@ -9,6 +9,12 @@
 #define ZXTAPE_H_
 #include <fstream>
 #include <string>
+#include <vector>
+struct tapblock {
+  size_t len;
+  char *buf;
+};
+
 class zxtape {
 public:
   zxtape(std::string filename);
@@ -21,14 +27,11 @@ public:
 private:
   bool bit();
   void flip();
-  void newblock();
   std::ifstream file;
-  unsigned char *buf;
-  uint32_t len;
   enum { PAUSE, RUNNING, END } state = PAUSE;
   enum { PREPILOT, PILOT, SYNC, DATA } blockstate = PILOT;
-  uint32_t blockno = 0;
-  uint32_t blocklen = 0;
+  std::vector<tapblock> blocks;
+  std::vector<tapblock>::iterator block;
   uint32_t blockoffs = 0;
   uint32_t pos = 0;
   uint32_t i_pos = 0;

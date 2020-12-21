@@ -16,46 +16,40 @@ zxtape::zxtape(string filename) {
   if (file.fail()) {
     throw ifstream::failure("Can't open TAP file");
   }
-  file.seekg(0, std::ios_base::end);
-  len = file.tellg();
-  file.seekg(0);
-  buf = new unsigned char[len];
-  file.read((char*)buf, len);
+  while (!file.eof()) {
+    uint16_t len;
+    file.read((char *)&len, 2);
+    if (file.fail()) {
+      break;
+    }
+    struct tapblock tb;
+    tb.len = len;
+    tb.buf = new char[len];
+    file.read(tb.buf, len);
+    if (file.fail()) {
+      file.close();
+      throw;
+    }
+    this->blocks.push_back(tb);
+  }
   file.close();
   reset();
 }
 
-void zxtape::newblock() {
-  pos = 0;
-  i_pos = 0;
-  blockoffs += blocklen;
-  if (blockoffs >= len) {
-    state = END;
-    std::cout << "TAP END\n";
-  } else {
-    blockstate = PREPILOT;
-    blocklen = *((uint16_t *)&buf[blockoffs]);
-    blockoffs += 2;
-    std::cout << "New tape block length " << std::dec << blocklen << " offs " << blockoffs << " ";
-    for (auto i = 0; i < 18; i++) {
-      std::cout << std::hex << (int)buf[blockoffs + i] << std::dec <<  " ";
-    }
-    std::cout << std::endl;
-  }
-}
 void zxtape::reset() {
   state = PAUSE;
-  blockno = 0;
+  blockstate = PREPILOT;
+  block = blocks.begin();
   blockoffs = 0;
-  blocklen = 0;
-  newblock();
+  pos = 0;
+  i_pos = 0;
   earr = false;
 }
 
 void zxtape::go() { state = RUNNING; }
 
 bool zxtape::bit() {
-  return buf[blockoffs + (pos / 8)] & (1 << (7 - (pos % 8)));
+  return block->buf[blockoffs + (pos / 8)] & (1 << (7 - (pos % 8)));
 }
 
 void zxtape::flip() { earr = !earr; }
@@ -113,8 +107,15 @@ bool zxtape::update_ticks(uint32_t diff) {
       flip();
       tock = false; // tick
       i_pos = 0;
-      if (++pos == 8 * blocklen) {
-        newblock();
+      if (++pos == 8 * block->len) {
+        block++;
+        blockoffs = 0;
+        pos = 0;
+        i_pos = 0;
+        blockstate = PREPILOT;
+        if (block == blocks.end()) {
+          state = END;
+        }
       }
     } else if (i_pos > l && !tock) {
       flip();
@@ -126,4 +127,8 @@ bool zxtape::update_ticks(uint32_t diff) {
 }
 bool const zxtape::ear() { return earr; }
 
-zxtape::~zxtape() { delete[] buf; }
+zxtape::~zxtape() {
+  for (auto &tb : blocks) {
+    delete[] tb.buf;
+  }
+}
