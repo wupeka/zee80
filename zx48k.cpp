@@ -239,9 +239,9 @@ void zx48k::processAudio() {
       }
       samps += samps_to_go;
     }
-    if (samps > 0) {
-      std::cout << samps << " " << samples << std::endl;
-    }
+//    if (samps > 0) {
+//      std::cout << samps << " " << samples << std::endl;
+//    }
     ff.write((char *)buf, 2 * sizeof(ymsample) * samples);
     int i = SDL_QueueAudio(sdldev, buf, 2 * sizeof(ymsample) * samples);
     if (i != 0) {
@@ -255,7 +255,6 @@ void zx48k::writeio(uint16_t address, uint8_t v) {
     if (ear != (bool)(v & 0x10)) {
       ear = v & 0x10;
       uint64_t proc_time = lastcycles - lastEarChange;
-      cout << "Proc time " << proc_time << endl;
       earStates.push_back(std::make_pair(ear, (proc_time*285)));
       lastEarChange = lastcycles;
     }
@@ -288,8 +287,20 @@ uint8_t zx48k::readio(uint16_t address) {
         }
       }
     }
-    if (tape && tape->ear()) {
-      out |= 1 << 6;
+    if (tape) {
+      bool n_ear;
+      if (tape->ear()) {
+        out |= 1 << 6;
+        n_ear = true;
+      } else {
+        n_ear = false;
+      }
+      if (ear != n_ear) {
+        ear = n_ear;
+        uint64_t proc_time = lastcycles - lastEarChange;
+        earStates.push_back(std::make_pair(n_ear, (proc_time*285)));
+        lastEarChange = lastcycles;
+      }
     }
 
   } else if (address == 0xfffd) {
@@ -348,16 +359,24 @@ void zx48k::scanline(int y) {
 }
 
 void zx48k::dump() {
+{
   std::ofstream fout("memdump", std::ios::out | std::ios::binary);
   fout.write((char *)memory, MEMORY_SIZE);
   fout.close();
 }
+{
+  std::ofstream fout("regdump", std::ios::out | std::ios::binary);
+  struct z80_regs r = cpu.get_regs();
+  fout.write((char*) &r, sizeof(struct z80_regs));
+  fout.close();
+}
+}
 
 bool zx48k::trap(uint16_t pc) {
 //  std::cout << "Trap at " << std::hex << pc << std::endl;
-//  return false;
-//  dump();
-//  std::cout << "DUMP DUMP DUMP\n";
+  return false;
+  dump();
+  std::cout << "DUMP DUMP DUMP\n";
   return false;
 }
 
