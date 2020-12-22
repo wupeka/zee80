@@ -24,17 +24,17 @@ struct z80_regs {
   uint8_t r;
   bool iff1;
   bool iff2;
-    
+
   uint16_t bc;
   uint16_t de;
   uint16_t hl;
-    
+
   uint8_t ap;
   uint8_t fp;
   uint16_t bcp;
   uint16_t dep;
   uint16_t hlp;
-   
+
   uint16_t pc;
   uint16_t sp;
   uint16_t ix;

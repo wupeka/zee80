@@ -49,13 +49,13 @@ zx48k::zx48k()
     printf("%s\n", SDL_GetError());
   }
   clock_gettime(CLOCK_MONOTONIC, &lastAyWrite);
-  
+
   // Tape load traps
   cpu.addtrap(0x056c);
 }
 
 void zx48k::initialize() {
-//  memset(memory, 0xff, MEMORY_SIZE);
+  //  memset(memory, 0xff, MEMORY_SIZE);
   std::ifstream fin(romfile, std::ios::in | std::ios::binary);
   if (fin.fail()) {
     throw ifstream::failure("Can't open ROM file");
@@ -228,20 +228,20 @@ void zx48k::processAudio() {
       if (x.first) {
         int i;
         for (i = 0; i < samps_to_go && i + samps < samples; i++) {
-          buf[2*(samps + i)] += 0x3fff;
-          buf[2*(samps + i) + 1] += 0x3fff;
+          buf[2 * (samps + i)] += 0x3fff;
+          buf[2 * (samps + i) + 1] += 0x3fff;
         }
         if (i < samps_to_go) {
-          x.second -= ((samps_to_go - i) * NSEC_PER_SEC)/44100;
+          x.second -= ((samps_to_go - i) * NSEC_PER_SEC) / 44100;
           earStates.insert(earStates.begin(), x);
           break;
         }
       }
       samps += samps_to_go;
     }
-//    if (samps > 0) {
-//      std::cout << samps << " " << samples << std::endl;
-//    }
+    //    if (samps > 0) {
+    //      std::cout << samps << " " << samples << std::endl;
+    //    }
     ff.write((char *)buf, 2 * sizeof(ymsample) * samples);
     int i = SDL_QueueAudio(sdldev, buf, 2 * sizeof(ymsample) * samples);
     if (i != 0) {
@@ -255,7 +255,7 @@ void zx48k::writeio(uint16_t address, uint8_t v) {
     if (ear != (bool)(v & 0x10)) {
       ear = v & 0x10;
       uint64_t proc_time = lastcycles - lastEarChange;
-      earStates.push_back(std::make_pair(ear, (proc_time*285)));
+      earStates.push_back(std::make_pair(ear, (proc_time * 285)));
       lastEarChange = lastcycles;
     }
     mic = v & 0x08;
@@ -298,7 +298,7 @@ uint8_t zx48k::readio(uint16_t address) {
       if (ear != n_ear) {
         ear = n_ear;
         uint64_t proc_time = lastcycles - lastEarChange;
-        earStates.push_back(std::make_pair(n_ear, (proc_time*285)));
+        earStates.push_back(std::make_pair(n_ear, (proc_time * 285)));
         lastEarChange = lastcycles;
       }
     }
@@ -359,21 +359,21 @@ void zx48k::scanline(int y) {
 }
 
 void zx48k::dump() {
-{
-  std::ofstream fout("memdump", std::ios::out | std::ios::binary);
-  fout.write((char *)memory, MEMORY_SIZE);
-  fout.close();
-}
-{
-  std::ofstream fout("regdump", std::ios::out | std::ios::binary);
-  struct z80_regs r = cpu.get_regs();
-  fout.write((char*) &r, sizeof(struct z80_regs));
-  fout.close();
-}
+  {
+    std::ofstream fout("memdump", std::ios::out | std::ios::binary);
+    fout.write((char *)memory, MEMORY_SIZE);
+    fout.close();
+  }
+  {
+    std::ofstream fout("regdump", std::ios::out | std::ios::binary);
+    struct z80_regs r = cpu.get_regs();
+    fout.write((char *)&r, sizeof(struct z80_regs));
+    fout.close();
+  }
 }
 
 bool zx48k::trap(uint16_t pc) {
-//  std::cout << "Trap at " << std::hex << pc << std::endl;
+  //  std::cout << "Trap at " << std::hex << pc << std::endl;
   return false;
   dump();
   std::cout << "DUMP DUMP DUMP\n";
@@ -400,8 +400,8 @@ void zx48k::run() {
     lastcycles = cycles;
     if (tape) {
       if (!tape->update_ticks(diff)) {
-//         turbo = false;
-//         trace = true;
+        turbo = false;
+        trace = true;
       }
     }
 

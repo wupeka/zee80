@@ -10,32 +10,39 @@
 #include <fstream>
 #include <string>
 #include <vector>
-struct tapblock {
-  size_t len;
-  char *buf;
+#include <memory>
+
+class zxtapeblock {
+public:
+  zxtapeblock(char * data, size_t len);
+  ~zxtapeblock();
+  void reset();
+  bool tick(uint32_t diff);
+  bool const ear();
+private:
+  zxtapeblock(const zxtapeblock&);
+  enum { SILENCE, PILOT, SYNC, DATA } blockstate_;
+  void flip();
+  bool bit();
+  size_t len_;
+  char *buf_;
+  uint32_t pos_;
+  uint32_t i_pos_;
+  bool ear_;
+  bool tock_;
 };
 
 class zxtape {
 public:
   zxtape(std::string filename);
-  ~zxtape();
   void reset();
   void go();
   bool update_ticks(uint32_t diff);
   bool const ear();
 
 private:
-  bool bit();
-  void flip();
-  std::ifstream file;
   enum { PAUSE, RUNNING, END } state = PAUSE;
-  enum { PREPILOT, PILOT, SYNC, DATA } blockstate = PILOT;
-  std::vector<tapblock> blocks;
-  std::vector<tapblock>::iterator block;
-  uint32_t blockoffs = 0;
-  uint32_t pos = 0;
-  uint32_t i_pos = 0;
-  bool earr;
-  bool tock;
+  std::vector<std::unique_ptr<zxtapeblock> > blocks;
+  std::vector<std::unique_ptr<zxtapeblock> >::iterator block;
 };
 #endif /* ZXTAPE_H_ */

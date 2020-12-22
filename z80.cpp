@@ -109,9 +109,7 @@ struct z80_regs z80::get_regs() {
   return R;
 }
 
-void z80::set_regs(struct z80_regs regs) {
-  R=regs;
-}
+void z80::set_regs(struct z80_regs regs) { R = regs; }
 
 uint64_t z80::tick() {
   if (in_halt) {

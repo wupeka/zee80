@@ -7,6 +7,8 @@
 #include "zxtape.h"
 #include <fstream>
 #include <iostream>
+#include <memory.h>
+#include <memory>
 
 using namespace std;
 
@@ -22,41 +24,68 @@ zxtape::zxtape(string filename) {
     if (file.fail()) {
       break;
     }
-    struct tapblock tb;
-    tb.len = len;
-    tb.buf = new char[len];
-    file.read(tb.buf, len);
+    char buf[len];
+    file.read(buf, len);
     if (file.fail()) {
       file.close();
       throw;
     }
-    this->blocks.push_back(tb);
+    this->blocks.push_back(std::make_unique<zxtapeblock>((char*) buf, len));
   }
   file.close();
   reset();
 }
 
+zxtapeblock::zxtapeblock(char *data, size_t len) {
+  buf_ = new char[len];
+  len_ = len;
+  memcpy(buf_, data, len);
+  reset();
+}
+  
+void zxtapeblock::reset() {
+  cout << "zxtapeblock reset " << len_ << " \n";
+  blockstate_ = SILENCE;
+  pos_ = 0;
+  i_pos_ = 0;
+  ear_ = false;
+}
+
 void zxtape::reset() {
   state = PAUSE;
-  blockstate = PREPILOT;
   block = blocks.begin();
-  blockoffs = 0;
-  pos = 0;
-  i_pos = 0;
-  earr = false;
+  (*block)->reset();
 }
-
+  
 void zxtape::go() { state = RUNNING; }
 
-bool zxtape::bit() {
-  return block->buf[blockoffs + (pos / 8)] & (1 << (7 - (pos % 8)));
+bool zxtapeblock::bit() {
+  return buf_[(pos_ / 8)] & (1 << (7 - (pos_ % 8)));
 }
 
-void zxtape::flip() { earr = !earr; }
+void zxtapeblock::flip() { ear_ = !ear_; }
+
 bool zxtape::update_ticks(uint32_t diff) {
+  if (block == blocks.end()) {
+    state = END;
+  }
   if (state != RUNNING) {
     return state != END;
   }
+  if ((*block)->tick(diff)) {
+    block++;
+    cout << "block++ \n";
+    if (block == blocks.end()) {
+      cout << "end \n";
+      state = END;
+      return false;
+    } else {
+      (*block)->reset();
+    }
+  }
+  return true;
+}
+bool zxtapeblock::tick(uint32_t diff) {
   // A 'pulse' here is either a mark or a space, so 2 pulses makes a complete
   // square wave cycle. Pilot tone: before each block is a sequence of 8063
   // (header) or 3223 (data) pulses, each of length 2168 T-states. Sync pulses:
@@ -64,71 +93,72 @@ bool zxtape::update_ticks(uint32_t diff) {
   // A '0' bit is encoded as 2 pulses of 855 T-states each.
   // A '1' bit is encoded as 2 pulses of 1710 T-states each (ie. twice the
   // length of a '0')
-  i_pos += diff;
-  switch (blockstate) {
-  case PREPILOT:
-    if (i_pos > 10000000) {
-      blockstate = PILOT;
-      i_pos = 0;
+  i_pos_ += diff;
+  switch (blockstate_) {
+  case SILENCE:
+    if (i_pos_ > 10000000) {
+      blockstate_ = PILOT;
+      i_pos_ = 0;
     }
     break;
+
   case PILOT:
-    if (i_pos > 2168) {
-      i_pos = 0;
+    if (i_pos_ > 2168) {
+      i_pos_ = 0;
       flip();
-      if (++pos > 8000) {
-        blockstate = SYNC;
-        i_pos = 0;
-        pos = 0;
+      if (++pos_ > 8000) {
+        blockstate_ = SYNC;
+        i_pos_ = 0;
+        pos_ = 0;
       }
     }
     break;
+
   case SYNC:
-    if (pos == 0) {
-      if (i_pos > 667) {
-        pos = 1;
-        i_pos = 0;
+    if (pos_ == 0) {
+      if (i_pos_ > 667) {
+        pos_ = 1;
+        i_pos_ = 0;
         flip();
       }
     } else {
-      if (i_pos > 735) {
-        blockstate = DATA;
-        tock = false;
-        pos = 0;
-        i_pos = 0;
+      if (i_pos_ > 735) {
+        blockstate_ = DATA;
+        tock_ = false;
+        pos_ = 0;
+        i_pos_ = 0;
         flip();
       }
     }
     break;
+
   case DATA: {
+    cout << "data bit " << bit() << " ipos " << i_pos_ << " pos " << pos_ << " " << ear_ << " " << diff << "\n";
     uint32_t l = bit() ? 1705 : 850; // 1710 : 855;
 
-    if (i_pos > 2 * l) {
+    if (i_pos_ > 2 * l) {
       flip();
-      tock = false; // tick
-      i_pos = 0;
-      if (++pos == 8 * block->len) {
-        block++;
-        blockoffs = 0;
-        pos = 0;
-        i_pos = 0;
-        blockstate = PREPILOT;
-        if (block == blocks.end()) {
-          state = END;
-        }
+      tock_ = false; // tick
+      i_pos_ = 0;
+      if (++pos_ == 8 * len_) {
+        return true;
       }
-    } else if (i_pos > l && !tock) {
+    } else if (i_pos_ > l && !tock_) {
       flip();
-      tock = true;
-    }
+      tock_ = true;
+     }
   }
   }
-  return true;
+  return false;
 }
-bool const zxtape::ear() { return earr; }
 
-zxtape::~zxtape() {
-  for (auto &tb : blocks) {
-    delete[] tb.buf;
-  }
+bool const zxtape::ear() { return (block != blocks.end()) ? (*block)->ear() : false; }
+
+bool const zxtapeblock::ear() {
+  return ear_;
 }
+
+zxtapeblock::~zxtapeblock() {
+  delete[] buf_;
+}
+

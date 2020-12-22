@@ -27,9 +27,7 @@ protected:
   inline bool key_pressed(const keys_t::value_type &value) const {
     return keys.count(value) != 0;
   }
-  inline bool keys_pressed() const {
-    return !keys.empty();
-  }
+  inline bool keys_pressed() const { return !keys.empty(); }
   uint32_t *pixels;
 
 private:

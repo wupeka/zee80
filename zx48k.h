@@ -51,7 +51,7 @@ private:
   bool trace = false;
   uint8_t memory[MEMORY_SIZE]; // simple linear model
   bool ear = false;
-  std::vector<std::pair<bool, uint64_t> > earStates;
+  std::vector<std::pair<bool, uint64_t>> earStates;
   bool mic = false;
   uint8_t border : 3;
   bool flashstate = false;
