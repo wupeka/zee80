@@ -21,7 +21,7 @@ public:
   bool const ear();
 private:
   zxtapeblock(const zxtapeblock&);
-  enum { SILENCE, PILOT, SYNC, DATA } blockstate_;
+  enum { LEADIN, PILOT, SYNC, DATA, LEADOUT } blockstate_;
   void flip();
   bool bit();
   size_t len_;

@@ -30,7 +30,7 @@ zxtape::zxtape(string filename) {
       file.close();
       throw;
     }
-    this->blocks.push_back(std::make_unique<zxtapeblock>((char*) buf, len));
+    this->blocks.push_back(std::make_unique<zxtapeblock>((char *)buf, len));
   }
   file.close();
   reset();
@@ -42,10 +42,10 @@ zxtapeblock::zxtapeblock(char *data, size_t len) {
   memcpy(buf_, data, len);
   reset();
 }
-  
+
 void zxtapeblock::reset() {
   cout << "zxtapeblock reset " << len_ << " \n";
-  blockstate_ = SILENCE;
+  blockstate_ = LEADIN;
   pos_ = 0;
   i_pos_ = 0;
   ear_ = false;
@@ -56,12 +56,10 @@ void zxtape::reset() {
   block = blocks.begin();
   (*block)->reset();
 }
-  
+
 void zxtape::go() { state = RUNNING; }
 
-bool zxtapeblock::bit() {
-  return buf_[(pos_ / 8)] & (1 << (7 - (pos_ % 8)));
-}
+bool zxtapeblock::bit() { return buf_[(pos_ / 8)] & (1 << (7 - (pos_ % 8))); }
 
 void zxtapeblock::flip() { ear_ = !ear_; }
 
@@ -95,8 +93,8 @@ bool zxtapeblock::tick(uint32_t diff) {
   // length of a '0')
   i_pos_ += diff;
   switch (blockstate_) {
-  case SILENCE:
-    if (i_pos_ > 10000000) {
+  case LEADIN:
+    if (i_pos_ > 4000000) { // ~1.15s
       blockstate_ = PILOT;
       i_pos_ = 0;
     }
@@ -133,7 +131,6 @@ bool zxtapeblock::tick(uint32_t diff) {
     break;
 
   case DATA: {
-    cout << "data bit " << bit() << " ipos " << i_pos_ << " pos " << pos_ << " " << ear_ << " " << diff << "\n";
     uint32_t l = bit() ? 1705 : 850; // 1710 : 855;
 
     if (i_pos_ > 2 * l) {
@@ -141,24 +138,29 @@ bool zxtapeblock::tick(uint32_t diff) {
       tock_ = false; // tick
       i_pos_ = 0;
       if (++pos_ == 8 * len_) {
-        return true;
+        blockstate_ = LEADOUT;
+        pos_ = 0;
+        i_pos_ = 0;
       }
     } else if (i_pos_ > l && !tock_) {
       flip();
       tock_ = true;
-     }
+    }
   }
+  case LEADOUT:
+    if (i_pos_ > 2000000) { // ~0.5s
+      return true;
+    }
+    break;
   }
+
   return false;
 }
 
-bool const zxtape::ear() { return (block != blocks.end()) ? (*block)->ear() : false; }
-
-bool const zxtapeblock::ear() {
-  return ear_;
+bool const zxtape::ear() {
+  return (block != blocks.end()) ? (*block)->ear() : false;
 }
 
-zxtapeblock::~zxtapeblock() {
-  delete[] buf_;
-}
+bool const zxtapeblock::ear() { return ear_; }
 
+zxtapeblock::~zxtapeblock() { delete[] buf_; }
