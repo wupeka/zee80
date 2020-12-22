@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include "z80.h"
 
 class zxtapeblock {
 public:
@@ -19,6 +20,7 @@ public:
   void reset();
   bool tick(uint32_t diff);
   bool const ear();
+  bool trapload(z80& cpu);
 private:
   zxtapeblock(const zxtapeblock&);
   enum { LEADIN, PILOT, SYNC, DATA, LEADOUT } blockstate_;
@@ -39,6 +41,7 @@ public:
   void go();
   bool update_ticks(uint32_t diff);
   bool const ear();
+  bool trapload(z80& cpu);
 
 private:
   enum { PAUSE, RUNNING, END } state = PAUSE;

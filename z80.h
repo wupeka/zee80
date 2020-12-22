@@ -67,6 +67,20 @@ public:
   void addtrap(uint16_t where);
   struct z80_regs get_regs();
   void set_regs(struct z80_regs regs);
+  BusHandler &bh;
+
+  static const uint8_t fS = 1 << 7;
+  static const uint8_t fZ = 1 << 6;
+  static const uint8_t fF5 = 1 << 5;
+  static const uint8_t fH = 1 << 4;
+  static const uint8_t fF3 = 1 << 3;
+  static const uint8_t fPV = 1 << 2;
+  static const uint8_t fN = 1 << 1;
+  static const uint8_t fC = 1;
+
+// public for traploader
+  uint8_t i_sub8(uint8_t a, uint8_t b, bool carry);
+
 
 private:
   std::vector<uint16_t> traps;
@@ -74,7 +88,6 @@ private:
   uint8_t *regaddr(uint8_t r);
   uint16_t *regaddr16(uint8_t r);
 
-  BusHandler &bh;
   struct z80_regs R;
 
   bool in_halt = false;
@@ -162,7 +175,8 @@ private:
   void i_setf358(uint8_t v);
   void i_setfP8(uint8_t v);
   uint8_t i_add8(uint8_t a, uint8_t b, bool carry);
-  uint8_t i_sub8(uint8_t a, uint8_t b, bool carry);
+// public for traploader
+// uint8_t i_sub8(uint8_t a, uint8_t b, bool carry);
   uint8_t i_and8(uint8_t a, uint8_t b);
   uint8_t i_xor8(uint8_t a, uint8_t b);
   uint8_t i_or8(uint8_t a, uint8_t b);
@@ -274,15 +288,6 @@ private:
 
   uint8_t i_bits_setresm(uint8_t op, uint16_t addr);
   uint8_t i_bits_setresr(uint8_t op);
-
-  static const uint8_t fS = 1 << 7;
-  static const uint8_t fZ = 1 << 6;
-  static const uint8_t fF5 = 1 << 5;
-  static const uint8_t fH = 1 << 4;
-  static const uint8_t fF3 = 1 << 3;
-  static const uint8_t fPV = 1 << 2;
-  static const uint8_t fN = 1 << 1;
-  static const uint8_t fC = 1;
 
   static constexpr bool parity[256] = {
       true,  false, false, true,  false, true,  true,  false, false, true,

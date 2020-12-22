@@ -121,7 +121,7 @@ uint64_t z80::tick() {
       if (bh.trap(R.pc)) {
         // It was trapped, who knows what happened in the meantime, we don't
         // care about the time for now.
-        return 0;
+        return cycles;
       }
     }
   }

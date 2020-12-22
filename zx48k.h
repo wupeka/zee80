@@ -61,8 +61,8 @@ private:
   // kkk -> key line (0-5)
   // 'shift' == 0b00 000 000
   std::set<uint8_t> keyspressed;
-
-  bool turbo = false;
+  bool trap_ = false;
+  bool turbo_ = false;
   std::ofstream ff;
 };
 

@@ -5,6 +5,7 @@
  *      Author: wpk
  */
 #include "zxtape.h"
+#include "z80.h"
 #include <fstream>
 #include <iostream>
 #include <memory.h>
@@ -34,6 +35,58 @@ zxtape::zxtape(string filename) {
   }
   file.close();
   reset();
+}
+
+bool zxtape::trapload(z80& cpu) {
+  if (state != PAUSE) {
+    return false;
+  }
+  if (block == blocks.end()) {
+    return false;
+  }
+  if ((*block)->trapload(cpu)) {
+    block++;
+    return true;
+  } else {
+    state = RUNNING;
+    return false;
+  }
+}
+
+
+bool zxtapeblock::trapload(z80& cpu) {
+  struct z80_regs r = cpu.get_regs();
+  bool verify = !(r.fp & cpu.fC);
+  uint8_t i = r.ap;
+  uint8_t parity = buf_[0];
+  cout << "Trapload len " << len_ << " de " << r.de << " verify " << verify << " parity " << (int)parity << " r.ap " << (int)r.ap << "\n";
+  if (len_ > 32768 || len_ != r.de + 2 || r.de == 0 || verify || parity != r.ap) {
+    return false;
+  }
+  r.pc = 0x05e2;
+  r.a = 0;
+  r.ap = 0x01;
+  r.fp = 0x45;
+  r.bc = 0xb001;
+    
+  for (int i = 1; i < len_-1; i++) {
+      parity ^= buf_[i];
+      cpu.bh.writemem(r.ix+i-1, buf_[i]);
+  }
+  parity ^= buf_[len_-1];
+  r.hl = (parity << 8) | buf_[len_-1];
+  r.ix += r.de;
+  r.de = 0;
+  r.a = parity;
+
+  
+// 0000000010307875 PC=05e2 A=00 F=42 F=01000010 I=3f IFF=00 IM=1 BC=b001 DE=0000 HL=fffe AF'=0145 BC'=1721 DE'=369b HL'=bebe IX=5cf3 IY=5c3a SP=ff4a (SP)=3f057107 OPC=c9cde705
+// 0000000030869693 PC=05e2 A=00 F=93 F=10010011 I=3f IFF=00 IM=1 BC=b07e DE=0000 HL=00fe AF'=7e6d BC'=1721 DE'=369b HL'=bebe IX=5cf3 IY=5c3a SP=ff4a (SP)=3f057107 OPC=c9cde705
+  
+  cpu.set_regs(r);
+// it modifies flags, need to do it after set_regs
+  cpu.i_sub8(r.a, 1, false);
+  return true;
 }
 
 zxtapeblock::zxtapeblock(char *data, size_t len) {

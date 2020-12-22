@@ -51,7 +51,6 @@ zx48k::zx48k()
   clock_gettime(CLOCK_MONOTONIC, &lastAyWrite);
 
   // Tape load traps
-  cpu.addtrap(0x056c);
 }
 
 void zx48k::initialize() {
@@ -69,14 +68,18 @@ void zx48k::initialize() {
   if (tapfile != "") {
     tape = new zxtape(tapfile);
   }
+  if (trap_) {
+    cpu.addtrap(0x056c);
+  }
 }
 
 void zx48k::parse_opts(int argc, char **argv) {
   po::options_description desc("Allowed options");
-  desc.add_options()("help", "display this message help message")(
-      "rom", po::value<string>(), "ROM file to use")("tap", po::value<string>(),
-                                                     "Tape to load")(
-      "trace", po::bool_switch()->default_value(false), "Enable tracing");
+  desc.add_options()("help", "display this message help message")
+      ("rom", po::value<string>(), "ROM file to use")
+      ("tap", po::value<string>(), "Tape to load")
+      ("trace", po::bool_switch()->default_value(false), "Enable tracing")
+      ("trap", po::bool_switch()->default_value(false), "Enable traploader");
 
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -95,6 +98,9 @@ void zx48k::parse_opts(int argc, char **argv) {
   }
   if (vm["trace"].as<bool>()) {
     trace = true;
+  }
+  if (vm["trap"].as<bool>()) {
+    trap_ = true;
   }
 }
 
@@ -373,10 +379,9 @@ void zx48k::dump() {
 }
 
 bool zx48k::trap(uint16_t pc) {
-  //  std::cout << "Trap at " << std::hex << pc << std::endl;
-  return false;
-  dump();
-  std::cout << "DUMP DUMP DUMP\n";
+  if (tape) {
+    return tape->trapload(cpu);
+  }
   return false;
 }
 
@@ -399,10 +404,7 @@ void zx48k::run() {
     uint64_t diff = cycles - lastcycles;
     lastcycles = cycles;
     if (tape) {
-      if (!tape->update_ticks(diff)) {
-        turbo = false;
-        trace = true;
-      }
+      tape->update_ticks(diff);
     }
 
     v_diff += diff;
@@ -438,9 +440,9 @@ void zx48k::run() {
           }
         } else if (key_pressed(SDLK_F8)) {
           if (debounce != SDLK_F8) {
-            turbo = !turbo;
+            turbo_ = !turbo_;
             debounce = SDLK_F8;
-            cout << string("Turbo mode ") << (turbo ? "on" : "off")
+            cout << string("Turbo mode ") << (turbo_ ? "on" : "off")
                  << std::endl;
           }
         } else if (key_pressed(SDLK_F4)) {
@@ -450,12 +452,12 @@ void zx48k::run() {
           debounce = 0;
         }
         cpu.interrupt(0xff);
-        if (!turbo) {
+        if (!turbo_) {
           redrawscreen();
         }
         if (++frame % 16 == 0) {
           flashstate = !flashstate;
-          if ((frame % 100 == 0) && turbo) {
+          if ((frame % 100 == 0) && turbo_) {
             redrawscreen();
           }
         }
@@ -477,7 +479,7 @@ void zx48k::run() {
 
       acc_delay += handl_time - real_time;
 
-      if (acc_delay < 0 || turbo) {
+      if (acc_delay < 0 || turbo_) {
         acc_delay = 0;
       }
 
