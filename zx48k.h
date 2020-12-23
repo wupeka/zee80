@@ -16,7 +16,7 @@
 #include <set>
 #include <string>
 
-class zx48k : public BusHandler, public EmuSDL {
+class zx48k : public BusHandler {
 public:
   zx48k();
   void parse_opts(int argc, char **argv);
@@ -30,6 +30,7 @@ public:
   virtual bool trap(uint16_t pc) override;
 
 private:
+  EmuSDL emusdl;
   static constexpr int MEMORY_SIZE = 65536;
   CYm2149Ex *ay;
   SDL_AudioDeviceID sdldev;
@@ -63,6 +64,8 @@ private:
   std::set<uint8_t> keyspressed;
   bool trap_ = false;
   bool turbo_ = false;
+  bool fs_ = false;
+  bool didtrap_ = false;
   std::ofstream ff;
 };
 

@@ -16,9 +16,9 @@ class EmuSDL {
 public:
   virtual ~EmuSDL();
 
-protected:
+public:
   typedef std::set<SDL_Keycode> keys_t;
-  EmuSDL(int w, int h, int hscale = 2, int wscale = 2);
+  EmuSDL(int w, int h, int hscale = 2, int wscale = 2, const char *name="EmuSDL");
   void redrawscreen();
   void readinput();
   inline const keys_t &get_keys() const { return keys; };

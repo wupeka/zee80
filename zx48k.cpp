@@ -35,7 +35,7 @@ constexpr uint32_t zxpalette[16] = {
 } // namespace
 
 zx48k::zx48k()
-    : EmuSDL(COLS, LINES, 2, 2), cpu(*this), romfile("testrom.bin"),
+    : emusdl(EmuSDL(COLS, LINES, 2, 2, "zx48k")), cpu(*this), romfile("testrom.bin"),
       ay(new CYm2149Ex(profileSpectrum, 44100)),
       ff("audio", std::ios::out | std::ios::binary) {
   SDL_AudioSpec want;
@@ -79,7 +79,8 @@ void zx48k::parse_opts(int argc, char **argv) {
       ("rom", po::value<string>(), "ROM file to use")
       ("tap", po::value<string>(), "Tape to load")
       ("trace", po::bool_switch()->default_value(false), "Enable tracing")
-      ("trap", po::bool_switch()->default_value(false), "Enable traploader");
+      ("trap", po::bool_switch()->default_value(false), "Enable traploader")
+      ("fs", po::bool_switch()->default_value(false), "Enable smaller borders");
 
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -101,6 +102,9 @@ void zx48k::parse_opts(int argc, char **argv) {
   }
   if (vm["trap"].as<bool>()) {
     trap_ = true;
+  }
+  if (vm["fs"].as<bool>()) {
+    fs_ = true;
   }
 }
 
@@ -283,7 +287,7 @@ uint8_t zx48k::readio(uint16_t address) {
   if ((address & 0xff) == 0xfe) { // keyboard routines
     out = 0xbf;
     uint8_t lines = ~(address >> 8);
-    for (auto sdlkey : get_keys()) {
+    for (auto sdlkey : emusdl.get_keys()) {
       uint8_t key = sdlkey2spectrum(sdlkey);
       if (key != 0xff) {
         uint8_t kline = 1 << (key >> 3);
@@ -324,12 +328,12 @@ void zx48k::scanline(int y) {
     // TODO unloopize it
     for (int x = 0; x < 352; x++) {
       uint32_t pixel = COLS * y + x;
-      pixels[pixel] = zxpalette[border];
+      emusdl.pixels[pixel] = zxpalette[border];
     }
   } else {
     for (int x = 0; x < 48; x++) {
       uint32_t pixel = COLS * y + x;
-      pixels[pixel] = zxpalette[border];
+      emusdl.pixels[pixel] = zxpalette[border];
     }
     for (int xx = 0; xx < 32; xx++) {
       int yy = y - TOP_BORDER_LINES;
@@ -353,13 +357,13 @@ void zx48k::scanline(int y) {
       for (int i = 0; i < 8; i++) {
         uint32_t pixel = COLS * y + 48 + 8 * xx + i;
         bool lit = memory[addr] & (1 << (7 - i));
-        pixels[pixel] = zxpalette[lit ? ink : paper];
+        emusdl.pixels[pixel] = zxpalette[lit ? ink : paper];
       }
     }
     // TODO unloopize it
     for (int x = 304; x < 352; x++) {
       uint32_t pixel = COLS * y + x;
-      pixels[pixel] = zxpalette[border];
+      emusdl.pixels[pixel] = zxpalette[border];
     }
   }
 }
@@ -379,9 +383,14 @@ void zx48k::dump() {
 }
 
 bool zx48k::trap(uint16_t pc) {
+//  if (didtrap_) {
+//    SDL_Delay(1000);
+//  }
   if (tape) {
-    return tape->trapload(cpu);
+    didtrap_ = tape->trapload(cpu);
+    return didtrap_;
   }
+  didtrap_ = false;
   return false;
 }
 
@@ -422,43 +431,43 @@ void zx48k::run() {
       if (line >= 312) {
         line = 0;
         // process input
-        readinput();
-        if (key_pressed(SDLK_F5)) {
+        emusdl.readinput();
+        if (emusdl.key_pressed(SDLK_F5)) {
           trace = true;
-        } else if (key_pressed(SDLK_F6)) {
+        } else if (emusdl.key_pressed(SDLK_F6)) {
           trace = false;
-        } else if (key_pressed(SDLK_F9)) {
+        } else if (emusdl.key_pressed(SDLK_F9)) {
           if (debounce != SDLK_F9) {
             debounce = SDLK_F9;
             dump();
           }
-        } else if (key_pressed(SDLK_F7) && tape) {
+        } else if (emusdl.key_pressed(SDLK_F7) && tape) {
           if (debounce != SDLK_F7) {
             debounce = SDLK_F7;
             tape->reset();
             tape->go();
           }
-        } else if (key_pressed(SDLK_F8)) {
+        } else if (emusdl.key_pressed(SDLK_F8)) {
           if (debounce != SDLK_F8) {
             turbo_ = !turbo_;
             debounce = SDLK_F8;
             cout << string("Turbo mode ") << (turbo_ ? "on" : "off")
                  << std::endl;
           }
-        } else if (key_pressed(SDLK_F4)) {
+        } else if (emusdl.key_pressed(SDLK_F4)) {
           cout << "Quitting..." << std::endl;
           return;
-        } else if (keys_pressed()) {
+        } else if (emusdl.keys_pressed()) {
           debounce = 0;
         }
         cpu.interrupt(0xff);
         if (!turbo_) {
-          redrawscreen();
+          emusdl.redrawscreen();
         }
         if (++frame % 16 == 0) {
           flashstate = !flashstate;
           if ((frame % 100 == 0) && turbo_) {
-            redrawscreen();
+            emusdl.redrawscreen();
           }
         }
       }
@@ -493,11 +502,3 @@ void zx48k::run() {
   }
 }
 
-zx48k *emu;
-int main(int argc, char **argv) {
-  SDL_Init(SDL_INIT_EVERYTHING);
-  emu = new zx48k();
-  emu->parse_opts(argc, argv);
-  emu->initialize();
-  emu->run();
-}

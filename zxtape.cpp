@@ -60,7 +60,7 @@ bool zxtapeblock::trapload(z80& cpu) {
   uint8_t i = r.ap;
   uint8_t parity = buf_[0];
   cout << "Trapload len " << len_ << " de " << r.de << " verify " << verify << " parity " << (int)parity << " r.ap " << (int)r.ap << "\n";
-  if (len_ > 32768 || len_ != r.de + 2 || r.de == 0 || verify || parity != r.ap) {
+  if (len_ != r.de + 2 || r.de == 0 || verify || parity != r.ap) {
     return false;
   }
   r.pc = 0x05e2;

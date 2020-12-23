@@ -9,10 +9,10 @@
 #include <SDL2/SDL.h>
 #include <cassert>
 
-EmuSDL::EmuSDL(int w, int h, int hscale, int wscale)
+EmuSDL::EmuSDL(int w, int h, int hscale, int wscale, const char * name)
     : w(w), h(h), wscale(wscale), hscale(hscale) {
   // TODO Auto-generated constructor stub
-  window = SDL_CreateWindow("EmuSDL", SDL_WINDOWPOS_UNDEFINED,
+  window = SDL_CreateWindow(name, SDL_WINDOWPOS_UNDEFINED,
                             SDL_WINDOWPOS_UNDEFINED, wscale * w, hscale * h,
                             SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
   if (window == NULL) {
