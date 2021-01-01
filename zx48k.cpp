@@ -22,12 +22,21 @@ namespace po = boost::program_options;
 constexpr int zx48k::MEMORY_SIZE;
 
 namespace {
-constexpr int COLS = 352;
-constexpr int LINES = 296;
-constexpr int TOP_BORDER_LINES = 48;
-constexpr int BOTTOM_BORDER_LINES = 56;
-constexpr int LEFT_BORDER_COLS = 48;
-constexpr int RIGHT_BORDER_COLS = 48;
+// Those are 'proper' values for ZX screen, we trim the borders a bit to make it nicer
+//constexpr int COLS = 352;
+//constexpr int LINES = 296;
+//constexpr int TOP_SKIP_LINES = 0;
+//constexpr int TOP_BORDER_LINES = 48;
+//constexpr int BOTTOM_BORDER_LINES = 56;
+//constexpr int LEFT_BORDER_COLS = 48;
+//constexpr int RIGHT_BORDER_COLS = 48;
+constexpr int COLS = 288;
+constexpr int LINES = 224;
+constexpr int TOP_SKIP_LINES = 32;
+constexpr int TOP_BORDER_LINES = 16;
+constexpr int BOTTOM_BORDER_LINES = 16;
+constexpr int LEFT_BORDER_COLS = 16;
+constexpr int RIGHT_BORDER_COLS = 16;
 constexpr uint32_t zxpalette[16] = {
     0x00000000, 0x000000CD, 0x00CD0000, 0x00CD00CD, 0x0000CD00, 0x0000CDCD,
     0x00CDCD00, 0x00CDCDCD, 0x00000000, 0x000000FF, 0x00FF0000, 0x00FF00FF,
@@ -322,49 +331,55 @@ uint8_t zx48k::readio(uint16_t address) {
 }
 
 void zx48k::scanline(int y) {
-  if (y >= LINES) { // 16 empty scanlines at the end
+  if (y < TOP_SKIP_LINES || y >= LINES + TOP_SKIP_LINES) { // 16 empty scanlines at the end
     return;
-  } else if ((y < 48) || (y >= 240)) {
-    // TODO unloopize it
-    for (int x = 0; x < 352; x++) {
-      uint32_t pixel = COLS * y + x;
-      emusdl.pixels[pixel] = zxpalette[border];
-    }
-  } else {
-    for (int x = 0; x < 48; x++) {
-      uint32_t pixel = COLS * y + x;
-      emusdl.pixels[pixel] = zxpalette[border];
-    }
-    for (int xx = 0; xx < 32; xx++) {
-      int yy = y - TOP_BORDER_LINES;
-      // 0 1 0 y7 y6 y2 y1 y0 y5 y4 y3 x4 x3 x2 x1 x0
-      uint16_t addr = (1 << 14) | xx | (((yy >> 3) & 0x7) << 5) |
-                      ((yy & 7) << 8) | ((yy >> 6) << 11);
-      uint8_t attrs = memory[0x5800 + xx + 32 * (yy / 8)];
-      uint8_t ink = attrs & 0x7;
-      uint8_t paper = (attrs >> 3) & 0x7;
-      if (attrs & 0b01000000) { // 'bright'
-        ink |= 0x8;
-        paper |= 0x8;
-      }
+  }
+  y -= TOP_SKIP_LINES;
 
-      if ((attrs & 0b10000000) && flashstate) {
-        ink ^= paper;
-        paper ^= ink;
-        ink ^= paper;
-      }
-
-      for (int i = 0; i < 8; i++) {
-        uint32_t pixel = COLS * y + 48 + 8 * xx + i;
-        bool lit = memory[addr] & (1 << (7 - i));
-        emusdl.pixels[pixel] = zxpalette[lit ? ink : paper];
-      }
-    }
+  if ((y < TOP_BORDER_LINES) || (y >= LINES - BOTTOM_BORDER_LINES)) {
     // TODO unloopize it
-    for (int x = 304; x < 352; x++) {
+    for (int x = 0; x < COLS; x++) {
       uint32_t pixel = COLS * y + x;
       emusdl.pixels[pixel] = zxpalette[border];
     }
+    return;
+  }
+
+  for (int x = 0; x < LEFT_BORDER_COLS; x++) {
+    uint32_t pixel = COLS * y + x;
+    emusdl.pixels[pixel] = zxpalette[border];
+  }
+
+  for (int xx = 0; xx < 32; xx++) { // 32 color boxes
+    int yy = y - TOP_BORDER_LINES;
+    // 0 1 0 y7 y6 y2 y1 y0 y5 y4 y3 x4 x3 x2 x1 x0
+    uint16_t addr = (1 << 14) | xx | (((yy >> 3) & 0x7) << 5) |
+                    ((yy & 7) << 8) | ((yy >> 6) << 11);
+    uint8_t attrs = memory[0x5800 + xx + 32 * (yy / 8)];
+    uint8_t ink = attrs & 0x7;
+    uint8_t paper = (attrs >> 3) & 0x7;
+    if (attrs & 0b01000000) { // 'bright'
+      ink |= 0x8;
+      paper |= 0x8;
+    }
+
+    if ((attrs & 0b10000000) && flashstate) {
+      ink ^= paper;
+      paper ^= ink;
+      ink ^= paper;
+    }
+
+    for (int i = 0; i < 8; i++) { // 8 pixels in each box.
+      uint32_t pixel = COLS * y + LEFT_BORDER_COLS + 8 * xx + i;
+      bool lit = memory[addr] & (1 << (7 - i));
+      emusdl.pixels[pixel] = zxpalette[lit ? ink : paper];
+    }
+  }
+
+  // TODO unloopize it
+  for (int x = COLS - RIGHT_BORDER_COLS; x < COLS; x++) {
+    uint32_t pixel = COLS * y + x;
+    emusdl.pixels[pixel] = zxpalette[border];
   }
 }
 
