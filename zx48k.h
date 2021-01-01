@@ -47,7 +47,7 @@ private:
   std::string romfile;
   std::string tapfile;
   zxtape *tape = NULL;
-  uint64_t lastcycles = 0;
+  uint64_t cpucycles_ = 0;
 
   bool trace = false;
   uint8_t memory[MEMORY_SIZE]; // simple linear model
@@ -63,6 +63,10 @@ private:
   // 'shift' == 0b00 000 000
   std::set<uint8_t> keyspressed;
   bool trap_ = false;
+  bool auto_ = false;
+  std::vector<std::vector<uint8_t >> keystopress_;
+  uint64_t keypressedtime_ = 0;
+  static constexpr uint64_t keypresstime_ = 100000; // ~20ms
   bool turbo_ = false;
   bool fs_ = false;
   bool didtrap_ = false;

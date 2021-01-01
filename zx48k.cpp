@@ -80,6 +80,9 @@ void zx48k::initialize() {
   if (trap_) {
     cpu.addtrap(0x056c);
   }
+  if (auto_) {
+    cpu.addtrap(0x15e1);
+  }
 }
 
 void zx48k::parse_opts(int argc, char **argv) {
@@ -89,6 +92,7 @@ void zx48k::parse_opts(int argc, char **argv) {
       ("tap", po::value<string>(), "Tape to load")
       ("trace", po::bool_switch()->default_value(false), "Enable tracing")
       ("trap", po::bool_switch()->default_value(false), "Enable traploader")
+      ("auto", po::bool_switch()->default_value(false), "Enable tape autoloader")
       ("fs", po::bool_switch()->default_value(false), "Enable smaller borders");
 
   po::variables_map vm;
@@ -111,6 +115,9 @@ void zx48k::parse_opts(int argc, char **argv) {
   }
   if (vm["trap"].as<bool>()) {
     trap_ = true;
+  }
+  if (vm["auto"].as<bool>()) {
+    auto_ = true;
   }
   if (vm["fs"].as<bool>()) {
     fs_ = true;
@@ -273,9 +280,9 @@ void zx48k::writeio(uint16_t address, uint8_t v) {
   if ((address & 0x1) == 0) { // ULA, might be & 0xff == 0xfe
     if (ear != (bool)(v & 0x10)) {
       ear = v & 0x10;
-      uint64_t proc_time = lastcycles - lastEarChange;
+      uint64_t proc_time = cpucycles_ - lastEarChange;
       earStates.push_back(std::make_pair(ear, (proc_time * 285)));
-      lastEarChange = lastcycles;
+      lastEarChange = cpucycles_;
     }
     mic = v & 0x08;
     border = v & 0x07;
@@ -296,6 +303,28 @@ uint8_t zx48k::readio(uint16_t address) {
   if ((address & 0xff) == 0xfe) { // keyboard routines
     out = 0xbf;
     uint8_t lines = ~(address >> 8);
+    if (!keystopress_.empty()) {
+      if (keypressedtime_ != 0 && keypressedtime_ + keypresstime_ < cpucycles_) {
+        cout << keypressedtime_ << " " << keypresstime_ << " " << cpucycles_ << "\n";
+        keystopress_.erase(keystopress_.begin());
+        keypressedtime_ = 0;
+        // continue, wait for the next round
+      } else {
+        if (keypressedtime_ == 0) {
+          keypressedtime_ = cpucycles_;
+        }
+        auto keys = keystopress_.front();
+        for (uint8_t key: keys) {
+          std::cout << (int)key << "\n";
+          uint8_t kline = 1 << (key >> 3);
+          uint8_t kaddr = 1 << (key & 0b111);
+          if (kline & lines) {
+            out &= ~(kaddr);
+          }
+        }
+      }
+    }
+    
     for (auto sdlkey : emusdl.get_keys()) {
       uint8_t key = sdlkey2spectrum(sdlkey);
       if (key != 0xff) {
@@ -316,9 +345,9 @@ uint8_t zx48k::readio(uint16_t address) {
       }
       if (ear != n_ear) {
         ear = n_ear;
-        uint64_t proc_time = lastcycles - lastEarChange;
+        uint64_t proc_time = cpucycles_ - lastEarChange;
         earStates.push_back(std::make_pair(n_ear, (proc_time * 285)));
-        lastEarChange = lastcycles;
+        lastEarChange = cpucycles_;
       }
     }
 
@@ -398,14 +427,18 @@ void zx48k::dump() {
 }
 
 bool zx48k::trap(uint16_t pc) {
-//  if (didtrap_) {
-//    SDL_Delay(1000);
-//  }
-  if (tape) {
-    didtrap_ = tape->trapload(cpu);
-    return didtrap_;
+  if (pc == 0x056c) { // start tape load
+    if (tape) {
+      didtrap_ = tape->trapload(cpu);
+      return didtrap_;
+    }	
+    didtrap_ = false;
+    return false;
+  } else if (pc == 0x15e1 && auto_) {
+    auto_ = false;
+    keystopress_ = std::vector<std::vector<uint8_t > > { { (6<<3|3)}, {}, {(7<<3|1)}, {(7<<3|1), (5 << 3 | 0)}, {}, {(7<<3|1)}, {(7<<3|1), (5 << 3 | 0)}, {}, {(6 << 3 | 0)} };
+    return false;
   }
-  didtrap_ = false;
   return false;
 }
 
@@ -425,8 +458,8 @@ void zx48k::run() {
       std::cout << cpu.get_trace();
     }
     uint64_t cycles = cpu.tick();
-    uint64_t diff = cycles - lastcycles;
-    lastcycles = cycles;
+    uint64_t diff = cycles - cpucycles_;
+    cpucycles_ = cycles;
     if (tape) {
       tape->update_ticks(diff);
     }
