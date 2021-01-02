@@ -37,6 +37,20 @@ zxtape::zxtape(string filename) {
   reset();
 }
 
+zxtape::zxtape(unsigned char *data, unsigned int len) {
+  int pos = 0;
+  while (pos < len) {
+    uint16_t blen = *(uint16_t*) (&data[pos]);
+    pos+=2;
+    cout << pos+blen << " " << len;
+    assert(pos + blen <= len);
+    this->blocks.push_back(std::make_unique<zxtapeblock>((char *)&data[pos], blen));
+    pos += blen;
+  }
+  reset();
+}
+
+
 bool zxtape::trapload(z80& cpu) {
   if (state != PAUSE) {
     return false;

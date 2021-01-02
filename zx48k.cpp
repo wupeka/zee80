@@ -44,9 +44,8 @@ constexpr uint32_t zxpalette[16] = {
 } // namespace
 
 zx48k::zx48k()
-    : emusdl(EmuSDL(COLS, LINES, 2, 2, "zx48k")), cpu(*this), romfile("testrom.bin"),
-      ay(new CYm2149Ex(profileSpectrum, 44100)),
-      ff("audio", std::ios::out | std::ios::binary) {
+    : emusdl(EmuSDL(COLS, LINES, 2, 2, "zx48k")), cpu(*this),
+      ay(new CYm2149Ex(profileSpectrum, 44100)) {
   SDL_AudioSpec want;
   SDL_memset(&want, 0, sizeof(want)); /* or SDL_zero(want) */
   want.freq = 44100;
@@ -63,7 +62,8 @@ zx48k::zx48k()
 }
 
 void zx48k::initialize() {
-  //  memset(memory, 0xff, MEMORY_SIZE);
+  //  memset(memory_, 0xff, MEMORY_SIZE);
+  romfile = "testrom.bin";
   std::ifstream fin(romfile, std::ios::in | std::ios::binary);
   if (fin.fail()) {
     throw ifstream::failure("Can't open ROM file");
@@ -71,11 +71,11 @@ void zx48k::initialize() {
   fin.seekg(0, std::ios_base::end);
   uint64_t len = fin.tellg();
   fin.seekg(0);
-  fin.read((char *)memory, len);
+  fin.read((char *)memory_, len);
   fin.close();
   border = 7;
   if (tapfile != "") {
-    tape = new zxtape(tapfile);
+    tape_ = new zxtape(tapfile);
   }
   if (trap_) {
     cpu.addtrap(0x056c);
@@ -111,7 +111,7 @@ void zx48k::parse_opts(int argc, char **argv) {
     tapfile = vm["tap"].as<string>();
   }
   if (vm["trace"].as<bool>()) {
-    trace = true;
+    trace_ = true;
   }
   if (vm["trap"].as<bool>()) {
     trap_ = true;
@@ -125,20 +125,19 @@ void zx48k::parse_opts(int argc, char **argv) {
 }
 
 uint32_t zx48k::readmem(uint16_t address, bool dotrace) {
-  if (trace && dotrace) {
+  if ((trace_ && dotrace)) {
     cout << "READMEM " << std::hex << (int)address << " "
-         << (int)(memory[address] & 0xff) << endl;
+         << (int)(memory_[address] & 0xff) << endl;
   }
-  return *((uint32_t *)(memory + address));
-  return memory[address] + (memory[address + 1] << 8) +
-         (memory[address + 2] << 16) + (memory[address + 3] << 24);
+  return *((uint32_t *)(memory_ + address));
+  return memory_[address] + (memory_[address + 1] << 8) +
+         (memory_[address + 2] << 16) + (memory_[address + 3] << 24);
 }
 
 void zx48k::writemem(uint16_t address, uint8_t v, bool dotrace) {
-  assert(address < MEMORY_SIZE);
   if (address >= 0x4000) {
-    memory[address] = v;
-    if (trace && dotrace) {
+    memory_[address] = v;
+    if (trace_ && dotrace) {
       cout << "WRITEMEM " << std::hex << (int)address << " " << (int)v << endl;
     }
   }
@@ -268,7 +267,6 @@ void zx48k::processAudio() {
     //    if (samps > 0) {
     //      std::cout << samps << " " << samples << std::endl;
     //    }
-    ff.write((char *)buf, 2 * sizeof(ymsample) * samples);
     int i = SDL_QueueAudio(sdldev, buf, 2 * sizeof(ymsample) * samples);
     if (i != 0) {
       cout << SDL_GetError();
@@ -335,9 +333,9 @@ uint8_t zx48k::readio(uint16_t address) {
         }
       }
     }
-    if (tape) {
+    if (tape_) {
       bool n_ear;
-      if (tape->ear()) {
+      if (tape_->ear()) {
         out |= 1 << 6;
         n_ear = true;
       } else {
@@ -384,7 +382,7 @@ void zx48k::scanline(int y) {
     // 0 1 0 y7 y6 y2 y1 y0 y5 y4 y3 x4 x3 x2 x1 x0
     uint16_t addr = (1 << 14) | xx | (((yy >> 3) & 0x7) << 5) |
                     ((yy & 7) << 8) | ((yy >> 6) << 11);
-    uint8_t attrs = memory[0x5800 + xx + 32 * (yy / 8)];
+    uint8_t attrs = memory_[0x5800 + xx + 32 * (yy / 8)];
     uint8_t ink = attrs & 0x7;
     uint8_t paper = (attrs >> 3) & 0x7;
     if (attrs & 0b01000000) { // 'bright'
@@ -400,7 +398,7 @@ void zx48k::scanline(int y) {
 
     for (int i = 0; i < 8; i++) { // 8 pixels in each box.
       uint32_t pixel = COLS * y + LEFT_BORDER_COLS + 8 * xx + i;
-      bool lit = memory[addr] & (1 << (7 - i));
+      bool lit = memory_[addr] & (1 << (7 - i));
       emusdl.pixels[pixel] = zxpalette[lit ? ink : paper];
     }
   }
@@ -415,7 +413,7 @@ void zx48k::scanline(int y) {
 void zx48k::dump() {
   {
     std::ofstream fout("memdump", std::ios::out | std::ios::binary);
-    fout.write((char *)memory, MEMORY_SIZE);
+    fout.write((char *)memory_, MEMORY_SIZE);
     fout.close();
   }
   {
@@ -428,8 +426,8 @@ void zx48k::dump() {
 
 bool zx48k::trap(uint16_t pc) {
   if (pc == 0x056c) { // start tape load
-    if (tape) {
-      didtrap_ = tape->trapload(cpu);
+    if (tape_) {
+      didtrap_ = tape_->trapload(cpu);
       return didtrap_;
     }	
     didtrap_ = false;
@@ -442,6 +440,39 @@ bool zx48k::trap(uint16_t pc) {
   return false;
 }
 
+bool zx48k::processinput() {
+  emusdl.readinput();
+  if (emusdl.key_pressed(SDLK_F5)) {
+          trace_ = true;
+  } else if (emusdl.key_pressed(SDLK_F6)) {
+    trace_ = false;
+  } else if (emusdl.key_pressed(SDLK_F9)) {
+    if (debounce_ != SDLK_F9) {
+      debounce_ = SDLK_F9;
+      dump();
+    }
+  } else if (emusdl.key_pressed(SDLK_F7) && tape_) {
+    if (debounce_ != SDLK_F7) {
+      debounce_ = SDLK_F7;
+      tape_->reset();
+      tape_->go();
+    }
+  } else if (emusdl.key_pressed(SDLK_F8)) {
+    if (debounce_ != SDLK_F8) {
+      turbo_ = !turbo_;
+      debounce_ = SDLK_F8;
+      cout << string("Turbo mode ") << (turbo_ ? "on" : "off")
+           << std::endl;
+    }
+  } else if (emusdl.key_pressed(SDLK_F4)) {
+    cout << "Quitting..." << std::endl;
+    return false;
+  } else if (emusdl.keys_pressed()) {
+    debounce_ = 0;
+  }
+  return true;
+}
+
 void zx48k::run() {
   int line = 0;
   int frame = 0;
@@ -452,16 +483,15 @@ void zx48k::run() {
   bool audioStarted = false;
   struct timespec tv_s, tv_e;
   clock_gettime(CLOCK_MONOTONIC, &tv_s);
-  SDL_Keycode debounce;
   for (;;) {
-    if (trace) {
+    if (trace_) {
       std::cout << cpu.get_trace();
     }
     uint64_t cycles = cpu.tick();
     uint64_t diff = cycles - cpucycles_;
     cpucycles_ = cycles;
-    if (tape) {
-      tape->update_ticks(diff);
+    if (tape_) {
+      tape_->update_ticks(diff);
     }
 
     v_diff += diff;
@@ -478,36 +508,10 @@ void zx48k::run() {
       }
       if (line >= 312) {
         line = 0;
-        // process input
-        emusdl.readinput();
-        if (emusdl.key_pressed(SDLK_F5)) {
-          trace = true;
-        } else if (emusdl.key_pressed(SDLK_F6)) {
-          trace = false;
-        } else if (emusdl.key_pressed(SDLK_F9)) {
-          if (debounce != SDLK_F9) {
-            debounce = SDLK_F9;
-            dump();
-          }
-        } else if (emusdl.key_pressed(SDLK_F7) && tape) {
-          if (debounce != SDLK_F7) {
-            debounce = SDLK_F7;
-            tape->reset();
-            tape->go();
-          }
-        } else if (emusdl.key_pressed(SDLK_F8)) {
-          if (debounce != SDLK_F8) {
-            turbo_ = !turbo_;
-            debounce = SDLK_F8;
-            cout << string("Turbo mode ") << (turbo_ ? "on" : "off")
-                 << std::endl;
-          }
-        } else if (emusdl.key_pressed(SDLK_F4)) {
-          cout << "Quitting..." << std::endl;
+        if (!processinput()) {
           return;
-        } else if (emusdl.keys_pressed()) {
-          debounce = 0;
         }
+
         cpu.interrupt(0xff);
         if (!turbo_) {
           emusdl.redrawscreen();

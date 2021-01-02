@@ -29,28 +29,30 @@ public:
   virtual void writeio(uint16_t address, uint8_t value) override;
   virtual bool trap(uint16_t pc) override;
 
-private:
+protected:
   EmuSDL emusdl;
   static constexpr int MEMORY_SIZE = 65536;
+  z80 cpu;
+
   CYm2149Ex *ay;
   SDL_AudioDeviceID sdldev;
   uint8_t ayport;
   void processAudio();
-
   struct timespec lastAyWrite;
   uint64_t lastEarChange;
 
   void scanline(int y);
   void dump();
-
-  z80 cpu;
+  
+  SDL_Keycode debounce_;
+  virtual bool processinput();
+  
   std::string romfile;
   std::string tapfile;
-  zxtape *tape = NULL;
+  zxtape *tape_ = NULL;
   uint64_t cpucycles_ = 0;
 
-  bool trace = false;
-  uint8_t memory[MEMORY_SIZE]; // simple linear model
+  uint8_t memory_[MEMORY_SIZE]; // simple linear model
   bool ear = false;
   std::vector<std::pair<bool, uint64_t>> earStates;
   bool mic = false;
@@ -62,6 +64,7 @@ private:
   // kkk -> key line (0-5)
   // 'shift' == 0b00 000 000
   std::set<uint8_t> keyspressed;
+  bool trace_ = false;
   bool trap_ = false;
   bool auto_ = false;
   std::vector<std::vector<uint8_t >> keystopress_;
@@ -70,7 +73,6 @@ private:
   bool turbo_ = false;
   bool fs_ = false;
   bool didtrap_ = false;
-  std::ofstream ff;
 };
 
 #endif /* ZX48K_H_ */

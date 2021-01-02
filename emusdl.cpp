@@ -8,6 +8,7 @@
 #include "emusdl.h"
 #include <SDL2/SDL.h>
 #include <cassert>
+#include <iostream>
 
 EmuSDL::EmuSDL(int w, int h, int hscale, int wscale, const char * name)
     : w(w), h(h), wscale(wscale), hscale(hscale) {
@@ -21,8 +22,8 @@ EmuSDL::EmuSDL(int w, int h, int hscale, int wscale, const char * name)
   }
   renderer = SDL_CreateRenderer(window, -1, 0);
   assert(renderer != NULL);
-  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,
-              "linear"); // make the scaled rendering look smoother.
+//  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,
+//              "linear"); // make the scaled rendering look smoother.
   SDL_RenderSetLogicalSize(renderer, wscale * w, hscale * h);
   texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
                               SDL_TEXTUREACCESS_STREAMING, w, h);
@@ -35,9 +36,15 @@ EmuSDL::~EmuSDL() {
   SDL_DestroyWindow(window);
   SDL_Quit();
 }
+void EmuSDL::settitle(const char *title) {
+  SDL_SetWindowTitle(window, title);
+}
 
 void EmuSDL::redrawscreen() {
   SDL_UpdateTexture(texture, NULL, pixels, w * sizeof(uint32_t));
+  // We set the background to the border color - first pixel of the screen
+  uint32_t p = pixels[0];
+  SDL_SetRenderDrawColor(renderer, (p >> 16) & 0xff, (p >> 8) & 0xff, (p)&0xff, 255);
   SDL_RenderClear(renderer);
   SDL_RenderCopy(renderer, texture, NULL, NULL);
   SDL_RenderPresent(renderer);
@@ -65,4 +72,11 @@ void EmuSDL::readinput() {
       break;
     }
   }
+}
+
+void EmuSDL::waitevent() {
+  SDL_WaitEvent(NULL);
+}
+void EmuSDL::fullscreen(bool fs) {
+  SDL_SetWindowFullscreen(window, fs ? SDL_WINDOW_FULLSCREEN : 0);
 }
