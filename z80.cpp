@@ -1709,7 +1709,7 @@ void z80::op_II() {
     cycles += 12;
     uint8_t sop = instrv >> 24;
     bool bits = false;
-    uint8_t val;
+    uint8_t val = 0;
     switch (sop >> 4) {
     case 0:
       cycles += 3;

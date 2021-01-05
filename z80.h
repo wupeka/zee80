@@ -8,7 +8,6 @@
 #ifndef Z80_H_
 #define Z80_H_
 #include "bushandler.h"
-#include <boost/lexical_cast.hpp>
 #include <cstdint>
 #include <cstring>
 #include <exception>

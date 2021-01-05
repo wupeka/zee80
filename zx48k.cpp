@@ -14,7 +14,7 @@
 #include <fstream>
 #include <iostream>
 #include <strings.h>
-#include <unistd.h> // TODO remove (usleep)
+#include <chrono>
 
 using namespace std;
 namespace po = boost::program_options;
@@ -46,17 +46,22 @@ constexpr uint32_t zxpalette[16] = {
 zx48k::zx48k()
     : emusdl(EmuSDL(COLS, LINES, 2, 2, "zx48k")), cpu(*this),
       ay(new CYm2149Ex(profileSpectrum, 44100)) {
-  SDL_AudioSpec want;
+  SDL_AudioSpec want, have;
   SDL_memset(&want, 0, sizeof(want)); /* or SDL_zero(want) */
   want.freq = 44100;
   want.format = AUDIO_S16;
   want.channels = 2;
-  want.samples = 4096;
-  sdldev = SDL_OpenAudioDevice(NULL, 0, &want, NULL, 0);
+  want.samples = INT_AUDIO_BUF_SIZE;
+  sdldev = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
   if (sdldev == 0) {
-    printf("%s\n", SDL_GetError());
+    printf("Error opening audio device %s\n", SDL_GetError());
   }
-  clock_gettime(CLOCK_MONOTONIC, &lastAyWrite);
+  if (want.format != have.format) {
+    printf("Different aoudio format output\n");
+  }
+  // To fill the buffer we'll unpause it after first frame.
+  SDL_PauseAudioDevice(sdldev, 1);
+  lastAyWrite = std::chrono::steady_clock::now();
 
   // Tape load traps
 }
@@ -230,59 +235,55 @@ static uint8_t sdlkey2spectrum(SDL_Keycode k) {
   }
 }
 #define NSEC_PER_SEC 1000000000
-void zx48k::processAudio() {
-  struct timespec tv_e;
-  clock_gettime(CLOCK_MONOTONIC, &tv_e);
-  uint64_t proc_time = (tv_e.tv_sec - lastAyWrite.tv_sec) * NSEC_PER_SEC +
-                       tv_e.tv_nsec - lastAyWrite.tv_nsec;
-  if (proc_time > 100000) {
-    uint64_t samples = (proc_time * 44100) / NSEC_PER_SEC;
-    uint64_t proc_ns = (samples * NSEC_PER_SEC) / 44100;
-    lastAyWrite.tv_nsec += proc_ns;
-    while (lastAyWrite.tv_nsec >= NSEC_PER_SEC) {
-      lastAyWrite.tv_nsec -= NSEC_PER_SEC;
-      lastAyWrite.tv_sec++;
+bool zx48k::processAudio() {
+  std::chrono::steady_clock::time_point tv_e = std::chrono::steady_clock::now();
+  uint64_t proc_time = std::chrono::nanoseconds(tv_e - lastAyWrite).count();
+  uint64_t samples = (proc_time * 44100) / NSEC_PER_SEC;
+  if (samples > 0) {
+    if (samples > INT_AUDIO_BUF_SIZE - abuf_pos_) {
+      samples = INT_AUDIO_BUF_SIZE - abuf_pos_;
     }
-    ymsample buf[2 * samples];
-    ay->updateStereo(buf, samples);
-    uint64_t samps = 0;
-    while (!earStates.empty()) {
-      auto x = earStates.front();
-      earStates.erase(earStates.begin());
-      uint64_t samps_to_go = (x.second * 44100) / NSEC_PER_SEC;
-      if (x.first) {
-        int i;
-        for (i = 0; i < samps_to_go && i + samps < samples; i++) {
-          buf[2 * (samps + i)] += 0x3fff;
-          buf[2 * (samps + i) + 1] += 0x3fff;
-        }
-        if (i < samps_to_go) {
-          x.second -= ((samps_to_go - i) * NSEC_PER_SEC) / 44100;
-          earStates.insert(earStates.begin(), x);
-          break;
+    uint64_t proc_ns = (samples * NSEC_PER_SEC) / 44100;
+    lastAyWrite += std::chrono::nanoseconds(proc_ns);
+    ay->updateStereo(&abuf_[2*abuf_pos_], samples);
+    
+    abuf_pos_ += samples;
+    if (abuf_pos_ == INT_AUDIO_BUF_SIZE) {
+      int i;
+      for (i = 0; i < INT_AUDIO_BUF_SIZE; i++) {
+        // We fill in the blanks with the last value
+        if ((i < aearbufpos_ ? aearbuf_[i] : aearbuf_[aearbufpos_-1])) {
+          abuf_[2*i] += 0x3fff;
+          abuf_[2*i+1] += 0x3fff;
         }
       }
-      samps += samps_to_go;
+      memmove(&aearbuf_[0], &aearbuf_[aearbufpos_], EARBUFOFFSET*INT_AUDIO_BUF_SIZE - aearbufpos_);
+      aearbufpos_ = 0;
+      i = SDL_QueueAudio(sdldev, abuf_, 2 * sizeof(ymsample) * INT_AUDIO_BUF_SIZE);
+      if (i != 0) {
+        cout << "queue audio error ";
+        cout << SDL_GetError();
+      }
+      abuf_pos_ = 0;
     }
-    //    if (samps > 0) {
-    //      std::cout << samps << " " << samples << std::endl;
-    //    }
-    int i = SDL_QueueAudio(sdldev, buf, 2 * sizeof(ymsample) * samples);
-    if (i != 0) {
-      cout << SDL_GetError();
-    }
+    return true;
   }
+
+  return false;
 }
 
 void zx48k::writeio(uint16_t address, uint8_t v) {
   if ((address & 0x1) == 0) { // ULA, might be & 0xff == 0xfe
-    if (ear != (bool)(v & 0x10)) {
-      ear = v & 0x10;
-      uint64_t proc_time = cpucycles_ - lastEarChange;
-      earStates.push_back(std::make_pair(ear, (proc_time * 285)));
-      lastEarChange = cpucycles_;
+    bool n_ear = v & 0x10;
+    bool n_mic = v & 0x08;
+    if (ear != n_ear) {
+//      uint64_t proc_time = cpucycles_ - lastEarChange;
+//      cout << "es change " << ear << " " << proc_time << " " << earStates.size() << endl;
+//      earStates.push_back(std::make_pair(ear, (proc_time * 285)));
+//      lastEarChange = cpucycles_;
     }
-    mic = v & 0x08;
+    ear = n_ear;
+    mic = n_mic;
     border = v & 0x07;
   } else if (address == 0xfffd) {
     // AY select port
@@ -343,9 +344,10 @@ uint8_t zx48k::readio(uint16_t address) {
       }
       if (ear != n_ear) {
         ear = n_ear;
-        uint64_t proc_time = cpucycles_ - lastEarChange;
-        earStates.push_back(std::make_pair(n_ear, (proc_time * 285)));
-        lastEarChange = cpucycles_;
+//        uint64_t proc_time = cpucycles_ - lastEarChange;
+//       earStates.push_back(std::make_pair(n_ear, (proc_time * 285)));
+//        lastEarChange = cpucycles_;
+        
       }
     }
 
@@ -479,10 +481,11 @@ void zx48k::run() {
   uint64_t v_diff = 0;
   uint64_t d_diff = 0;
   uint64_t a_diff = 0;
+
   int64_t acc_delay = 0;
   bool audioStarted = false;
-  struct timespec tv_s, tv_e;
-  clock_gettime(CLOCK_MONOTONIC, &tv_s);
+  std::chrono::steady_clock::time_point tv_s, tv_e;
+  tv_s = std::chrono::steady_clock::now();
   for (;;) {
     if (trace_) {
       std::cout << cpu.get_trace();
@@ -501,15 +504,14 @@ void zx48k::run() {
     // draw lines that should be drawn now.
     while (v_diff > 224) {
       scanline(line++);
-      processAudio();
-      if (!audioStarted) {
-        SDL_PauseAudioDevice(sdldev, 0);
-        audioStarted = true;
-      }
       if (line >= 312) {
         line = 0;
         if (!processinput()) {
           return;
+        }
+        if (!audioStarted) {
+          SDL_PauseAudioDevice(sdldev, 0);
+          audioStarted = true;
         }
 
         cpu.interrupt(0xff);
@@ -526,15 +528,24 @@ void zx48k::run() {
       v_diff -= 224;
     }
 
+    while (a_diff > 77) {
+      if (aearbufpos_ == EARBUFOFFSET*INT_AUDIO_BUF_SIZE) {
+        cout << "Too much !\n";
+        break;
+      }
+      aearbuf_[aearbufpos_++] = ear;
+      a_diff -= 77;
+      processAudio();
+    }
+
     // correct timing:
     // 'd_diff' cycles should take us d_diff * 285ns, if we're too late - too
     // bad if we're too soon - wait do it only if d_diff > 10000 to save time on
     // unnecessary clock_gettimes
     // TODO move it into emusdl
-    if (d_diff > 1000) {
-      clock_gettime(CLOCK_MONOTONIC, &tv_e);
-      uint64_t real_time = (tv_e.tv_sec - tv_s.tv_sec) * 1000000000 +
-                           tv_e.tv_nsec - tv_s.tv_nsec;
+    if (d_diff > 30000) {
+      tv_e = std::chrono::steady_clock::now();
+      uint64_t real_time = std::chrono::nanoseconds(tv_e - tv_s).count();
       uint64_t handl_time = d_diff * 285; // 3.5MHz == 1/285ns
       d_diff = 0;
 
@@ -549,7 +560,7 @@ void zx48k::run() {
         acc_delay -= c * 1000000;
         SDL_Delay(c);
       }
-      clock_gettime(CLOCK_MONOTONIC, &tv_s);
+      tv_s = std::chrono::steady_clock::now();
     }
   }
 }

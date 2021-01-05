@@ -15,7 +15,9 @@
 #include <Ym2149Ex.h>
 #include <set>
 #include <string>
-
+#include <chrono>
+#define INT_AUDIO_BUF_SIZE 8192
+#define EARBUFOFFSET 8
 class zx48k : public BusHandler {
 public:
   zx48k();
@@ -33,13 +35,17 @@ protected:
   EmuSDL emusdl;
   static constexpr int MEMORY_SIZE = 65536;
   z80 cpu;
+  ymsample abuf_[2*INT_AUDIO_BUF_SIZE];
+  bool aearbuf_[EARBUFOFFSET*INT_AUDIO_BUF_SIZE];
+  int aearbufpos_;
+  int abuf_pos_ = 0;
 
   CYm2149Ex *ay;
   SDL_AudioDeviceID sdldev;
   uint8_t ayport;
-  void processAudio();
-  struct timespec lastAyWrite;
-  uint64_t lastEarChange;
+  bool processAudio();
+  std::chrono::steady_clock::time_point lastAyWrite;
+  uint64_t lastEarWrite;
 
   void scanline(int y);
   void dump();
