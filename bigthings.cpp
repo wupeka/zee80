@@ -1,5 +1,5 @@
 /*
- * pandora.cpp
+ * bigthings.cpp
  *
  *  Created on: 20 mar 2016
  *      Author: wpk
@@ -14,53 +14,34 @@
 #include <iostream>
 #include <strings.h>
 #include "zx48krom.h"
-#include "pandora.h"
+#include "bigthings.h"
 
 using namespace std;
 
-class pandora : public zx48k {
+class bigthings : public zx48k {
 public:
-  pandora();
+  bigthings();
   void initialize();
   virtual bool processinput() override;
-  virtual void writemem(uint16_t address, uint8_t v, bool dotrace) override;
   bool fullscreen = false;
-  uint8_t x_;
-  uint8_t y_;
 };
 
-void pandora::initialize() {
+void bigthings::initialize() {
   memcpy(memory_, zx48k_rom, zx48k_rom_len);
   border = 7;
-  tape_ = new zxtape(PANDORA_TAP, PANDORA_TAP_len);
+  tape_ = new zxtape(BIGTHINGS_TAP, BIGTHINGS_TAP_len);
   trap_ = true;
   auto_ = true;
   cpu.addtrap(0x056c);
   cpu.addtrap(0x15e1);
-  emusdl.settitle("Puszka Pandory");
+  emusdl.settitle("BigThings");
 }
 
-
-void pandora::writemem(uint16_t address, uint8_t v, bool dotrace) {
-  bool change = false;
-  if (address == 0x6a9e) {
-    x_ = v;
-    change = true;
-  } else if (address == 0x6a9f) {
-    y_ = v;
-    change = true;
-  }
-  if (change) {
-    cout << "New pos " << (int)x_ << " " << (int)y_ << "\n";
-  }
-  zx48k::writemem(address, v, dotrace);
-}
-
-pandora::pandora()
+bigthings::bigthings()
 {
 }
 
-bool pandora::processinput() {
+bool bigthings::processinput() {
   emusdl.readinput();
   if (emusdl.key_pressed(SDLK_F2)) {
     if (debounce_ != SDLK_F2) {
@@ -77,10 +58,10 @@ bool pandora::processinput() {
   return true;
 }
 
-pandora *emu;
+bigthings *emu;
 int main(int argc, char **argv) {
   SDL_Init(SDL_INIT_EVERYTHING);
-  emu = new pandora();
+  emu = new bigthings();
   emu->initialize();
   emu->run();
 }

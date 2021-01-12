@@ -7,7 +7,11 @@
 
 #ifndef EMUSDL_H_
 #define EMUSDL_H_
+#ifdef __MINGW32__
+#include <SDL.h>
+#else
 #include <SDL2/SDL.h>
+#endif
 #include <algorithm>
 #include <memory>
 #include <set>

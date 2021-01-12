@@ -8,7 +8,7 @@
 #include "zx48k.h"
 #include <Ym2149Ex.h>
 #include <YmProfiles.h>
-#include <boost/program_options.hpp>
+//#include <boost/program_options.hpp>
 #include <cassert>
 #include <ctime>
 #include <fstream>
@@ -17,7 +17,7 @@
 #include <chrono>
 
 using namespace std;
-namespace po = boost::program_options;
+//namespace po = boost::program_options;
 
 constexpr int zx48k::MEMORY_SIZE;
 
@@ -90,45 +90,39 @@ void zx48k::initialize() {
   }
 }
 
-void zx48k::parse_opts(int argc, char **argv) {
-  po::options_description desc("Allowed options");
-  desc.add_options()("help", "display this message help message")
-      ("rom", po::value<string>(), "ROM file to use")
-      ("tap", po::value<string>(), "Tape to load")
-      ("trace", po::bool_switch()->default_value(false), "Enable tracing")
-      ("trap", po::bool_switch()->default_value(false), "Enable traploader")
-      ("auto", po::bool_switch()->default_value(false), "Enable tape autoloader")
-      ("fs", po::bool_switch()->default_value(false), "Enable smaller borders");
-
-  po::variables_map vm;
-  po::store(po::parse_command_line(argc, argv, desc), vm);
-  po::notify(vm);
-
-  if (vm.count("help")) {
-    cout << desc << "\n";
-    exit(1);
-  }
-
-  if (vm.count("rom")) {
-    romfile = vm["rom"].as<string>();
-  }
-  if (vm.count("tap")) {
-    tapfile = vm["tap"].as<string>();
-  }
-  if (vm["trace"].as<bool>()) {
-    trace_ = true;
-  }
-  if (vm["trap"].as<bool>()) {
-    trap_ = true;
-  }
-  if (vm["auto"].as<bool>()) {
-    auto_ = true;
-  }
-  if (vm["fs"].as<bool>()) {
-    fs_ = true;
-  }
+static void help() {
+  exit(1);
 }
 
+void zx48k::parse_opts(int argc, char **argv) {
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "--help")) {
+      help();
+    }
+    if (!strcmp(argv[i], "--rom")) {
+      i++;
+      if (i == argc) {
+        help();
+      }
+      romfile = argv[i];
+    } else if (!strcmp(argv[i], "--tap")) {
+      i++;
+      if (i == argc) {
+        help();
+      }
+      tapfile = argv[i];
+    } else if (!strcmp(argv[i], "--trace")) {
+      trace_ = true;
+    } else if (!strcmp(argv[i], "--trap")) {
+      trap_ = true;
+    } else if (!strcmp(argv[i], "--auto")) {
+      auto_ = true;
+    } else if (!strcmp(argv[i], "--fs")) {
+      fs_ = true;
+    }
+  }
+}
+      
 uint32_t zx48k::readmem(uint16_t address, bool dotrace) {
   if ((trace_ && dotrace)) {
     cout << "READMEM " << std::hex << (int)address << " "
@@ -222,7 +216,7 @@ static uint8_t sdlkey2spectrum(SDL_Keycode k) {
     return 6 << 3 | 4;
   case SDLK_SPACE:
     return 7 << 3 | 0;
-  case SDLK_RSHIFT:
+  case SDLK_RALT:
     return 7 << 3 | 1;
   case SDLK_m:
     return 7 << 3 | 2;
@@ -252,12 +246,16 @@ bool zx48k::processAudio() {
       int i;
       for (i = 0; i < INT_AUDIO_BUF_SIZE; i++) {
         // We fill in the blanks with the last value
-        if ((i < aearbufpos_ ? aearbuf_[i] : aearbuf_[aearbufpos_-1])) {
+//        if ((i < aearbufpos_ ? aearbuf_[i] : aearbuf_[aearbufpos_-1])) {
+        if (aearbuf_[i % aearbufpos_]) {
           abuf_[2*i] += 0x3fff;
           abuf_[2*i+1] += 0x3fff;
         }
       }
-      memmove(&aearbuf_[0], &aearbuf_[aearbufpos_], EARBUFOFFSET*INT_AUDIO_BUF_SIZE - aearbufpos_);
+      if (aearbufpos_ < INT_AUDIO_BUF_SIZE) {
+        cout << aearbufpos_ << "\n";
+      }
+      memmove(&aearbuf_[0], &aearbuf_[aearbufpos_], EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE - aearbufpos_);
       aearbufpos_ = 0;
       i = SDL_QueueAudio(sdldev, abuf_, 2 * sizeof(ymsample) * INT_AUDIO_BUF_SIZE);
       if (i != 0) {
@@ -528,13 +526,13 @@ void zx48k::run() {
       v_diff -= 224;
     }
 
-    while (a_diff > 77) {
-      if (aearbufpos_ == EARBUFOFFSET*INT_AUDIO_BUF_SIZE) {
+    while (a_diff > EARCYCLES) {
+      if (aearbufpos_ == EARBUFOFFSET*INT_AUDIO_BUF_SIZE + EARBUFRESERVE) {
         cout << "Too much !\n";
         break;
       }
       aearbuf_[aearbufpos_++] = ear;
-      a_diff -= 77;
+      a_diff -= EARCYCLES;
       processAudio();
     }
 

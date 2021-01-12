@@ -10,6 +10,7 @@
 #include <iostream>
 #include <memory.h>
 #include <memory>
+#include <cassert>
 
 using namespace std;
 

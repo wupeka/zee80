@@ -11,13 +11,20 @@
 #include "emusdl.h"
 #include "z80.h"
 #include "zxtape.h"
+#ifdef __MINGW32__
+#include <SDL_audio.h>
+#else
 #include <SDL2/SDL_audio.h>
+#endif
+
 #include <Ym2149Ex.h>
 #include <set>
 #include <string>
 #include <chrono>
-#define INT_AUDIO_BUF_SIZE 8192
-#define EARBUFOFFSET 8
+#define INT_AUDIO_BUF_SIZE 2048
+#define EARBUFOFFSET 2
+#define EARBUFRESERVE 0
+#define EARCYCLES 71
 class zx48k : public BusHandler {
 public:
   zx48k();
@@ -36,7 +43,7 @@ protected:
   static constexpr int MEMORY_SIZE = 65536;
   z80 cpu;
   ymsample abuf_[2*INT_AUDIO_BUF_SIZE];
-  bool aearbuf_[EARBUFOFFSET*INT_AUDIO_BUF_SIZE];
+  bool aearbuf_[EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE];
   int aearbufpos_;
   int abuf_pos_ = 0;
 

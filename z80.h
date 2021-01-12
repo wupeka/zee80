@@ -13,6 +13,7 @@
 #include <exception>
 #include <iostream>
 #include <string>
+#include <vector>
 
 struct z80_regs {
   // registers
