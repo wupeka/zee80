@@ -244,18 +244,25 @@ bool zx48k::processAudio() {
     abuf_pos_ += samples;
     if (abuf_pos_ == INT_AUDIO_BUF_SIZE) {
       int i;
+      double scale = 1;
+      int move = aearbufpos_;
+      if (aearbufpos_ < INT_AUDIO_BUF_SIZE) {
+        move = aearbufpos_;
+        scale = 1.0 * aearbufpos_ / INT_AUDIO_BUF_SIZE;
+      }
       for (i = 0; i < INT_AUDIO_BUF_SIZE; i++) {
+          
         // We fill in the blanks with the last value
 //        if ((i < aearbufpos_ ? aearbuf_[i] : aearbuf_[aearbufpos_-1])) {
-        if (aearbuf_[i % aearbufpos_]) {
+        if (aearbuf_[(int)(scale * i)]) {
           abuf_[2*i] += 0x3fff;
           abuf_[2*i+1] += 0x3fff;
         }
       }
-      if (aearbufpos_ < INT_AUDIO_BUF_SIZE) {
-        cout << aearbufpos_ << "\n";
-      }
-      memmove(&aearbuf_[0], &aearbuf_[aearbufpos_], EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE - aearbufpos_);
+//      if (aearbufpos_ < INT_AUDIO_BUF_SIZE) {
+//        cout << aearbufpos_ << "\n";
+//      }
+      memmove(&aearbuf_[0], &aearbuf_[move], EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE - move);
       aearbufpos_ = 0;
       i = SDL_QueueAudio(sdldev, abuf_, 2 * sizeof(ymsample) * INT_AUDIO_BUF_SIZE);
       if (i != 0) {
@@ -427,7 +434,13 @@ void zx48k::dump() {
 bool zx48k::trap(uint16_t pc) {
   if (pc == 0x056c) { // start tape load
     if (tape_) {
-      didtrap_ = tape_->trapload(cpu);
+      size_t len = tape_->trapload(cpu);
+      if (len > 0) {
+        pausecycles_ = len * 20;
+        didtrap_ = true;
+      } else {
+        didtrap_ = false;
+      }
       return didtrap_;
     }	
     didtrap_ = false;
@@ -481,16 +494,26 @@ void zx48k::run() {
   uint64_t a_diff = 0;
 
   int64_t acc_delay = 0;
-  bool audioStarted = false;
+  int audioStarted = 0;
   std::chrono::steady_clock::time_point tv_s, tv_e;
   tv_s = std::chrono::steady_clock::now();
   for (;;) {
     if (trace_) {
       std::cout << cpu.get_trace();
     }
-    uint64_t cycles = cpu.tick();
-    uint64_t diff = cycles - cpucycles_;
-    cpucycles_ = cycles;
+    uint64_t cycles;
+    uint64_t diff;
+    if (pausecycles_ > 0) {
+      diff = 12;
+      if ((pausecycles_ % 500) == 0) {
+         border = (pausecycles_ % 1000) ? 1 : 6;
+      }
+      pausecycles_--;
+    } else {
+      cycles = cpu.tick();
+      diff = cycles - cpucycles_;
+      cpucycles_ = cycles;
+    }
     if (tape_) {
       tape_->update_ticks(diff);
     }
@@ -507,12 +530,13 @@ void zx48k::run() {
         if (!processinput()) {
           return;
         }
-        if (!audioStarted) {
+        if (audioStarted < 20 && ++audioStarted == 20) {
           SDL_PauseAudioDevice(sdldev, 0);
-          audioStarted = true;
         }
 
-        cpu.interrupt(0xff);
+        if (pausecycles_ == 0)  {
+          cpu.interrupt(0xff);
+        }
         if (!turbo_) {
           emusdl.redrawscreen();
         }

@@ -52,19 +52,20 @@ zxtape::zxtape(unsigned char *data, unsigned int len) {
 }
 
 
-bool zxtape::trapload(z80& cpu) {
+size_t zxtape::trapload(z80& cpu) {
   if (state != PAUSE) {
-    return false;
+    return 0;
   }
   if (block == blocks.end()) {
-    return false;
+    return 0;
   }
   if ((*block)->trapload(cpu)) {
+    size_t blen = (*block)->len();
     block++;
-    return true;
+    return blen;
   } else {
     state = RUNNING;
-    return false;
+    return 0;
   }
 }
 
@@ -199,7 +200,7 @@ bool zxtapeblock::tick(uint32_t diff) {
     break;
 
   case DATA: {
-    uint32_t l = bit() ? 1705 : 850; // 1710 : 855;
+    uint32_t l = bit() ? 1710 : 855; // 1710 : 855;
 
     if (i_pos_ > 2 * l) {
       flip();

@@ -24,7 +24,7 @@
 #define INT_AUDIO_BUF_SIZE 2048
 #define EARBUFOFFSET 2
 #define EARBUFRESERVE 0
-#define EARCYCLES 71
+#define EARCYCLES 74
 class zx48k : public BusHandler {
 public:
   zx48k();
@@ -86,6 +86,9 @@ protected:
   bool turbo_ = false;
   bool fs_ = false;
   bool didtrap_ = false;
+
+  uint64_t pausecycles_;
+
 };
 
 #endif /* ZX48K_H_ */

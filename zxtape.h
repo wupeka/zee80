@@ -21,6 +21,7 @@ public:
   bool tick(uint32_t diff);
   bool const ear();
   bool trapload(z80& cpu);
+  size_t len() { return len_; };
 private:
   zxtapeblock(const zxtapeblock&);
   enum { LEADIN, PILOT, SYNC, DATA, LEADOUT } blockstate_;
@@ -42,7 +43,7 @@ public:
   void go();
   bool update_ticks(uint32_t diff);
   bool const ear();
-  bool trapload(z80& cpu);
+  size_t trapload(z80& cpu);
   
 private:
   enum { PAUSE, RUNNING, END } state = PAUSE;

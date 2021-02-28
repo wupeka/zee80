@@ -18,7 +18,7 @@ find_package(SDL2)
 if (MINGW) 
 	set(SDL2_LIB -lmingw32 SDL2::SDL2main SDL2::SDL2-static)
 else()	
-	set(SDL2_LIB -lSDL2)
+	set(SDL2_LIB -lSDL2 -lSDL2_image)
 endif()
 
 #include(${wxWidgets_USE_FILE})
