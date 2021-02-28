@@ -14,7 +14,7 @@ EmuSDL::EmuSDL(int w, int h, int hscale, int wscale, const char * name)
   // TODO Auto-generated constructor stub
   window = SDL_CreateWindow(name, SDL_WINDOWPOS_UNDEFINED,
                             SDL_WINDOWPOS_UNDEFINED, wscale * w, hscale * h,
-                            SDL_WINDOW_RESIZABLE);
+                            SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
   if (window == NULL) {
     printf("SDL CreateWindow failed %s\n", SDL_GetError());
     exit(1);
