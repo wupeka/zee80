@@ -22,7 +22,7 @@ else()
 endif()
 
 #include(${wxWidgets_USE_FILE})
-set(CMAKE_CXX_FLAGS "-O2 -ggdb -Wall -fsanitize=address -mtune=native -Wall")
+set(CMAKE_CXX_FLAGS "-O0 -ggdb -Wall -fsanitize=address -mtune=native -Wall")
 
 add_library (zee80 z80.cpp)
 
@@ -43,7 +43,7 @@ set(STSOUND_EXTRA_LINK_FLAG " libstsound.a ")
 set(STSOUND_EXTRA_LINK_FLAG_STATIC " SDL2_EXTRA_LINK_FLAGS_STATIC ")
 
 add_executable (zx48k zx48kmain.cpp zx48k.cpp zxtape.cpp emusdl.cpp)
-add_executable (pandora pandora.cpp zx48k.cpp zxtape.cpp emusdl.cpp)
+add_executable (pandora pandora.cpp zx48k.cpp zxtape.cpp emusdl.cpp pandsnap.cpp)
 add_executable (bigthings bigthings.cpp zx48k.cpp zxtape.cpp emusdl.cpp)
 
 target_link_libraries (pandora LINK_PUBLIC zee80 ${SDL2_LIB} stsound)

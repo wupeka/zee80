@@ -16,6 +16,7 @@
 #include <fstream>
 #include <iostream>
 #include <strings.h>
+#include "pandsnap.h"
 
 using namespace std;
 
@@ -34,6 +35,7 @@ public:
   SDL_Renderer *maprenderer_;
   SDL_Texture *maptexture_;
   SDL_Texture *dot_;
+  Pandsnap *pandsnap_;
 };
 
 void pandora::showmap() {
@@ -44,7 +46,7 @@ void pandora::showmap() {
   }
   mapwindow_ =
       SDL_CreateWindow("Mapa", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                       1000, 1000, SDL_WINDOW_RESIZABLE);
+                       600, 600, SDL_WINDOW_RESIZABLE);
   maprenderer_ = SDL_CreateRenderer(mapwindow_, -1, 0);
   SDL_RenderSetLogicalSize(maprenderer_, 1000, 1000);
   SDL_Surface *surf =
@@ -74,6 +76,7 @@ void pandora::upmap() {
 
 void pandora::initialize() {
   memcpy(memory_, zx48k_rom, zx48k_rom_len);
+  pandsnap_ = new Pandsnap("snapshot.dat");
   border = 7;
   tape_ = new zxtape(PANDORA_TAP, PANDORA_TAP_len);
   trap_ = true;
@@ -113,6 +116,16 @@ bool pandora::processinput() {
     if (debounce_ != SDLK_F5) {
       debounce_ = SDLK_F5;
       showmap();
+    }
+  } else if (emusdl.key_pressed(SDLK_F7)) {
+    if (debounce_ != SDLK_F7) {
+      debounce_ = SDLK_F7;
+      pandsnap_->Save(0, &cpu, memory_+16384);
+    }
+  } else if (emusdl.key_pressed(SDLK_F8)) {
+    if (debounce_ != SDLK_F8) {
+      debounce_ = SDLK_F8;
+      pandsnap_->Load(0, &cpu, memory_+16384);
     }
   } else if (emusdl.key_pressed(SDLK_F4)) {
     cout << "Quitting..." << std::endl;

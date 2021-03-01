@@ -224,6 +224,10 @@ static uint8_t sdlkey2spectrum(SDL_Keycode k) {
     return 7 << 3 | 3;
   case SDLK_b:
     return 7 << 3 | 4;
+    
+//  case SDLK_BACKSPACE: // shift + 0
+//    return (0 << 3 | 0) | (;
+
   default:
     return 0xff;
   }
