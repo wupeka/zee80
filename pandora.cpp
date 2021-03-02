@@ -96,7 +96,6 @@ void pandora::writemem(uint16_t address, uint8_t v, bool dotrace) {
     change = true;
   }
   if (change) {
-    cout << "New pos " << (int)x_ << " " << (int)y_ << "\n";
     upmap();
   }
   zx48k::writemem(address, v, dotrace);

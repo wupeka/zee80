@@ -313,7 +313,6 @@ uint8_t zx48k::readio(uint16_t address) {
     uint8_t lines = ~(address >> 8);
     if (!keystopress_.empty()) {
       if (keypressedtime_ != 0 && keypressedtime_ + keypresstime_ < cpucycles_) {
-        cout << keypressedtime_ << " " << keypresstime_ << " " << cpucycles_ << "\n";
         keystopress_.erase(keystopress_.begin());
         keypressedtime_ = 0;
         // continue, wait for the next round
@@ -323,7 +322,6 @@ uint8_t zx48k::readio(uint16_t address) {
         }
         auto keys = keystopress_.front();
         for (uint8_t key: keys) {
-          std::cout << (int)key << "\n";
           uint8_t kline = 1 << (key >> 3);
           uint8_t kaddr = 1 << (key & 0b111);
           if (kline & lines) {
@@ -556,7 +554,7 @@ void zx48k::run() {
 
     while (a_diff > EARCYCLES) {
       if (aearbufpos_ == EARBUFOFFSET*INT_AUDIO_BUF_SIZE + EARBUFRESERVE) {
-        cout << "Too much !\n";
+        cout << "Too much audio in buffer!\n";
         break;
       }
       aearbuf_[aearbufpos_++] = ear;

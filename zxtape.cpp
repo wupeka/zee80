@@ -43,7 +43,6 @@ zxtape::zxtape(unsigned char *data, unsigned int len) {
   while (pos < len) {
     uint16_t blen = *(uint16_t*) (&data[pos]);
     pos+=2;
-    cout << pos+blen << " " << len;
     assert(pos + blen <= len);
     this->blocks.push_back(std::make_unique<zxtapeblock>((char *)&data[pos], blen));
     pos += blen;
@@ -74,7 +73,6 @@ bool zxtapeblock::trapload(z80& cpu) {
   struct z80_regs r = cpu.get_regs();
   bool verify = !(r.fp & cpu.fC);
   uint8_t parity = buf_[0];
-  cout << "Trapload len " << len_ << " de " << r.de << " verify " << verify << " parity " << (int)parity << " r.ap " << (int)r.ap << "\n";
   if (len_ != r.de + 2 || r.de == 0 || verify || parity != r.ap) {
     return false;
   }
@@ -112,7 +110,6 @@ zxtapeblock::zxtapeblock(char *data, size_t len) {
 }
 
 void zxtapeblock::reset() {
-  cout << "zxtapeblock reset " << len_ << " \n";
   blockstate_ = LEADIN;
   pos_ = 0;
   i_pos_ = 0;
@@ -140,9 +137,7 @@ bool zxtape::update_ticks(uint32_t diff) {
   }
   if ((*block)->tick(diff)) {
     block++;
-    cout << "block++ \n";
     if (block == blocks.end()) {
-      cout << "end \n";
       state = END;
       return false;
     } else {
