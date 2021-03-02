@@ -24,9 +24,9 @@
 #define INT_AUDIO_BUF_SIZE 2048
 #define EARBUFOFFSET 2
 #define EARBUFRESERVE 0
-#define EARCYCLES 74
-class zx48k : public BusHandler {
-public:
+//#define EARCYCLES 74
+#define EARCYCLES 80
+class zx48k : public BusHandler { public:
   zx48k();
   void parse_opts(int argc, char **argv);
   void initialize();

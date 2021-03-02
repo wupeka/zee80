@@ -567,7 +567,7 @@ void zx48k::run() {
     // bad if we're too soon - wait do it only if d_diff > 10000 to save time on
     // unnecessary clock_gettimes
     // TODO move it into emusdl
-    if (d_diff > 30000) {
+    if (d_diff > 100) {
       tv_e = std::chrono::steady_clock::now();
       uint64_t real_time = std::chrono::nanoseconds(tv_e - tv_s).count();
       uint64_t handl_time = d_diff * 285; // 3.5MHz == 1/285ns
