@@ -11,7 +11,7 @@ endif()
 
 project (zee80)
 
-
+set(CMAKE_VERBOSE_MAKEFILE ON)
 #find_package(wxWidgets REQUIRED net gl core base)
 
 find_package(SDL2)

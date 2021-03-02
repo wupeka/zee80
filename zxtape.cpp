@@ -39,7 +39,7 @@ zxtape::zxtape(string filename) {
 }
 
 zxtape::zxtape(unsigned char *data, unsigned int len) {
-  int pos = 0;
+  unsigned int pos = 0;
   while (pos < len) {
     uint16_t blen = *(uint16_t*) (&data[pos]);
     pos+=2;
@@ -73,7 +73,6 @@ size_t zxtape::trapload(z80& cpu) {
 bool zxtapeblock::trapload(z80& cpu) {
   struct z80_regs r = cpu.get_regs();
   bool verify = !(r.fp & cpu.fC);
-  uint8_t i = r.ap;
   uint8_t parity = buf_[0];
   cout << "Trapload len " << len_ << " de " << r.de << " verify " << verify << " parity " << (int)parity << " r.ap " << (int)r.ap << "\n";
   if (len_ != r.de + 2 || r.de == 0 || verify || parity != r.ap) {
@@ -85,7 +84,7 @@ bool zxtapeblock::trapload(z80& cpu) {
   r.fp = 0x45;
   r.bc = 0xb001;
     
-  for (int i = 1; i < len_-1; i++) {
+  for (unsigned i = 1; i < len_-1; i++) {
       parity ^= buf_[i];
       cpu.bh.writemem(r.ix+i-1, buf_[i]);
   }

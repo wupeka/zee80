@@ -44,7 +44,7 @@ protected:
   z80 cpu;
   ymsample abuf_[2*INT_AUDIO_BUF_SIZE];
   bool aearbuf_[EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE];
-  int aearbufpos_;
+  int aearbufpos_ = 0;
   int abuf_pos_ = 0;
 
   CYm2149Ex *ay;

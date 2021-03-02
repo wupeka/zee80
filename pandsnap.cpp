@@ -4,14 +4,12 @@
 Pandsnap::Pandsnap(std::string filename) {
     datafile_ = fopen(filename.c_str(), "r+");
     if (datafile_ == NULL) {
-        throw;
+        init(filename);
     }
     fseek(datafile_, 0, SEEK_END);
     int length = ftell(datafile_);
     fseek(datafile_, 0, SEEK_SET);
-    if (length < 1) {
-        init(filename);
-    } else if (length != SNAP_HDR_SIZE + SNAP_SLOTS * SNAP_BLOCK_SIZE) {
+    if (length != SNAP_HDR_SIZE + SNAP_SLOTS * SNAP_BLOCK_SIZE) {
         throw;
     }
     char head[8];
@@ -43,13 +41,15 @@ std::vector<std::string> Pandsnap::List() {
 }
 
 void Pandsnap::init(std::string filename) {
+    datafile_ = fopen(filename.c_str(), "w");
     fwrite(HEAD_, 8, 1, datafile_);
     char zeros[SNAP_BLOCK_SIZE] = {0};
     for (int i=0; i< SNAP_SLOTS; i++) {
         fwrite(zeros, SNAP_BLOCK_SIZE, 1, datafile_);
         slots_.push_back(0);
     }
-    fseek(datafile_, 0, SEEK_SET);
+    fclose(datafile_);
+    datafile_ = fopen(filename.c_str(), "r+");
 }
 
 void Pandsnap::Save(int slot, z80* cpu, uint8_t* mem) {

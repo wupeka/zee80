@@ -10,7 +10,7 @@
 #include <iostream>
 
 EmuSDL::EmuSDL(int w, int h, int hscale, int wscale, const char * name)
-    : w(w), h(h), wscale(wscale), hscale(hscale) {
+    : w(w), h(h),  hscale(hscale), wscale(wscale) {
   // TODO Auto-generated constructor stub
   window = SDL_CreateWindow(name, SDL_WINDOWPOS_UNDEFINED,
                             SDL_WINDOWPOS_UNDEFINED, wscale * w, hscale * h,
