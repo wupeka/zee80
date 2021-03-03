@@ -39,6 +39,7 @@ class zx48k : public BusHandler { public:
   virtual bool trap(uint16_t pc) override;
 
 protected:
+  bool do_frame();
   EmuSDL emusdl;
   static constexpr int MEMORY_SIZE = 65536;
   z80 cpu;
@@ -86,6 +87,14 @@ protected:
   bool turbo_ = false;
   bool fs_ = false;
   bool didtrap_ = false;
+  int frame_ = 0;
+  uint64_t v_diff_ = 0;
+  uint64_t d_diff_ = 0;
+  uint64_t a_diff_ = 0;
+  int64_t acc_delay_ = 0;
+  int audio_started_ = 0;
+  std::chrono::steady_clock::time_point tv_s_, tv_e_;
+
 
   uint64_t pausecycles_;
 

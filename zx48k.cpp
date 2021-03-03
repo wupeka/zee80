@@ -489,16 +489,16 @@ bool zx48k::processinput() {
 }
 
 void zx48k::run() {
-  int line = 0;
-  int frame = 0;
-  uint64_t v_diff = 0;
-  uint64_t d_diff = 0;
-  uint64_t a_diff = 0;
+  tv_s_ = std::chrono::steady_clock::now();
+  for (;;) {
+    if (!do_frame()) {
+      return;
+    }
+  }
+}
 
-  int64_t acc_delay = 0;
-  int audioStarted = 0;
-  std::chrono::steady_clock::time_point tv_s, tv_e;
-  tv_s = std::chrono::steady_clock::now();
+bool zx48k::do_frame() {
+  int line = 0;
   for (;;) {
     if (trace_) {
       std::cout << cpu.get_trace();
@@ -520,19 +520,19 @@ void zx48k::run() {
       tape_->update_ticks(diff);
     }
 
-    v_diff += diff;
-    d_diff += diff;
-    a_diff += diff;
+    v_diff_ += diff;
+    d_diff_ += diff;
+    a_diff_ += diff;
 
     // draw lines that should be drawn now.
-    while (v_diff > 224) {
+    while (v_diff_ > 224) {
       scanline(line++);
       if (line >= 312) {
         line = 0;
         if (!processinput()) {
-          return;
+          return false;
         }
-        if (audioStarted < 20 && ++audioStarted == 20) {
+        if (audio_started_ < 20 && ++audio_started_ == 20) {
           SDL_PauseAudioDevice(sdldev, 0);
         }
 
@@ -542,49 +542,50 @@ void zx48k::run() {
         if (!turbo_) {
           emusdl.redrawscreen();
         }
-        if (++frame % 16 == 0) {
+        if (++frame_ % 16 == 0) {
           flashstate = !flashstate;
-          if ((frame % 100 == 0) && turbo_) {
+          if ((frame_ % 100 == 0) && turbo_) {
             emusdl.redrawscreen();
           }
         }
+        return true;
       }
-      v_diff -= 224;
+      v_diff_ -= 224;
     }
 
-    while (a_diff > EARCYCLES) {
+    while (a_diff_ > EARCYCLES) {
       if (aearbufpos_ == EARBUFOFFSET*INT_AUDIO_BUF_SIZE + EARBUFRESERVE) {
         cout << "Too much audio in buffer!\n";
         break;
       }
       aearbuf_[aearbufpos_++] = ear;
-      a_diff -= EARCYCLES;
+      a_diff_ -= EARCYCLES;
       processAudio();
     }
 
     // correct timing:
-    // 'd_diff' cycles should take us d_diff * 285ns, if we're too late - too
-    // bad if we're too soon - wait do it only if d_diff > 10000 to save time on
+    // 'd_diff_' cycles should take us d_diff_ * 285ns, if we're too late - too
+    // bad if we're too soon - wait do it only if d_diff_ > 10000 to save time on
     // unnecessary clock_gettimes
     // TODO move it into emusdl
-    if (d_diff > 100) {
-      tv_e = std::chrono::steady_clock::now();
-      uint64_t real_time = std::chrono::nanoseconds(tv_e - tv_s).count();
-      uint64_t handl_time = d_diff * 285; // 3.5MHz == 1/285ns
-      d_diff = 0;
+    if (d_diff_ > 100) {
+      tv_e_ = std::chrono::steady_clock::now();
+      uint64_t real_time = std::chrono::nanoseconds(tv_e_ - tv_s_).count();
+      uint64_t handl_time = d_diff_ * 285; // 3.5MHz == 1/285ns
+      d_diff_ = 0;
 
-      acc_delay += handl_time - real_time;
+      acc_delay_ += handl_time - real_time;
 
-      if (acc_delay < 0 || turbo_) {
-        acc_delay = 0;
+      if (acc_delay_ < 0 || turbo_) {
+        acc_delay_ = 0;
       }
 
-      if (acc_delay > 1000000) {
-        uint64_t c = acc_delay / 1000000;
-        acc_delay -= c * 1000000;
+      if (acc_delay_ > 1000000) {
+        uint64_t c = acc_delay_ / 1000000;
+        acc_delay_ -= c * 1000000;
         SDL_Delay(c);
       }
-      tv_s = std::chrono::steady_clock::now();
+      tv_s_ = std::chrono::steady_clock::now();
     }
   }
 }
