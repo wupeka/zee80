@@ -164,6 +164,7 @@ char *z80::get_trace() {
 void z80::addtrap(uint16_t addr) { traps.push_back(addr); }
 
 bool z80::interrupt(uint8_t data) {
+//  std::cout << "INTR " << (int) data << " R.iff1 " << (int)R.iff1 << " R.imode " << (int)R.imode << std::endl;
   if (R.iff1) {
     // push R.pc
     R.sp--;

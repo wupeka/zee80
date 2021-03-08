@@ -128,9 +128,10 @@ uint32_t zx48k::readmem(uint16_t address, bool dotrace) {
     cout << "READMEM " << std::hex << (int)address << " "
          << (int)(memory_[address] & 0xff) << endl;
   }
-  return *((uint32_t *)(memory_ + address));
-  return memory_[address] + (memory_[address + 1] << 8) +
-         (memory_[address + 2] << 16) + (memory_[address + 3] << 24);
+  
+  // return *((uint32_t *)(memory_ + address));
+  return memory_[address] + (memory_[(address + 1) & 0xffff] << 8) +
+         (memory_[(address + 2)&0xffff] << 16) + (memory_[(address + 3)&0xffff] << 24);
 }
 
 void zx48k::writemem(uint16_t address, uint8_t v, bool dotrace) {

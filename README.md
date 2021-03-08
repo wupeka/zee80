@@ -1,4 +1,4 @@
-Z80 machines emulator
+Z80 machines emulator - CPC6128, ZX48K
 
 Usage for zx48k:
  - download 48.rom from somewhere
