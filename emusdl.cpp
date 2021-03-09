@@ -60,6 +60,11 @@ void EmuSDL::readinput() {
     case SDL_KEYUP:
       keys.erase(event.key.keysym.sym);
       break;
+    case SDL_MOUSEBUTTONDOWN:
+    // ry = 25 * (40 - y_)
+    // 
+      std::cout << event.button.x/25 + 1 << " " << 40 - (event.button.y/25) << std::endl;
+      break; 
     default:
       break;
     }

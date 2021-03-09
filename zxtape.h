@@ -39,15 +39,15 @@ class zxtape {
 public:
   zxtape(std::string filename);
   zxtape(unsigned char *data, unsigned int len);
-  void reset();
   void go();
   bool update_ticks(uint32_t diff);
   bool const ear();
   size_t trapload(z80& cpu);
+  void reset(int block = 0);
   
 private:
   enum { PAUSE, RUNNING, END } state = PAUSE;
   std::vector<std::unique_ptr<zxtapeblock> > blocks;
-  std::vector<std::unique_ptr<zxtapeblock> >::iterator block;
+  int block;
 };
 #endif /* ZXTAPE_H_ */

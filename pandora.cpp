@@ -27,6 +27,7 @@ public:
   void showmap();
   void upmap();
   virtual bool processinput() override;
+  virtual bool trap(uint16_t pc) override;
   virtual void writemem(uint16_t address, uint8_t v, bool dotrace) override;
   bool fullscreen = false;
   uint8_t x_;
@@ -83,6 +84,7 @@ void pandora::initialize() {
   auto_ = true;
   cpu.addtrap(0x056c);
   cpu.addtrap(0x15e1);
+  cpu.addtrap(0x8dc5);
   emusdl.settitle("Puszka Pandory");
 }
 
@@ -97,10 +99,21 @@ void pandora::writemem(uint16_t address, uint8_t v, bool dotrace) {
   }
   if (change) {
     upmap();
+    std::cout << "X: " << (int)x_ << " Y: " << (int)y_ << std::endl;
   }
   zx48k::writemem(address, v, dotrace);
 }
 
+bool pandora::trap(uint16_t pc) {
+  if (pc == 0x8dc5) {
+    std::cout << "FINISHED" << std::endl;
+    auto_ = true;
+    cpu.reset();    
+    return true;
+  } else {
+    return zx48k::trap(pc);
+  }
+}
 pandora::pandora() {}
 
 bool pandora::processinput() {
@@ -121,10 +134,25 @@ bool pandora::processinput() {
       debounce_ = SDLK_F7;
       pandsnap_->Save(0, &cpu, memory_+16384);
     }
+  } else if (emusdl.key_pressed(SDLK_F6)) {
+    if (debounce_ != SDLK_F6) {
+      debounce_ = SDLK_F6;
+      trace_ = true;
+    }
   } else if (emusdl.key_pressed(SDLK_F8)) {
     if (debounce_ != SDLK_F8) {
       debounce_ = SDLK_F8;
       pandsnap_->Load(0, &cpu, memory_+16384);
+      tape_->reset(7);
+    }
+  }  else if (emusdl.key_pressed(SDLK_F9)) {
+    if (debounce_ != SDLK_F9) {
+      debounce_ = SDLK_F9;
+      int x,y;
+      cin >> x;
+      cin >> y;
+      zx48k::writemem(0x6a9e, x, false);
+      zx48k::writemem(0x6a9f, y, false);
     }
   } else if (emusdl.key_pressed(SDLK_F4)) {
     cout << "Quitting..." << std::endl;
