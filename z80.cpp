@@ -111,6 +111,21 @@ struct z80_regs z80::get_regs() {
 
 void z80::set_regs(struct z80_regs regs) { R = regs; }
 
+
+uint32_t z80::readmem(uint16_t addr) {
+  uint64_t ts = cycles - last_intr;
+  cycles += bh.contention(addr, ts);
+  return bh.readmem(addr);
+}
+
+void z80::writemem(uint16_t addr, uint8_t value) {
+  uint64_t ts = cycles - last_intr;
+  cycles += bh.contention(addr, ts);
+  bh.writemem(addr, value);
+}
+
+
+  
 uint64_t z80::tick() {
   if (in_halt) {
     cycles += 4;
@@ -125,7 +140,7 @@ uint64_t z80::tick() {
       }
     }
   }
-  instrv = bh.readmem(R.pc);
+  instrv = readmem(R.pc);
   bool ei_was_waiting = ei_waiting;
   ei_waiting = false;
   instr = instrv & 0xff;
@@ -166,11 +181,12 @@ void z80::addtrap(uint16_t addr) { traps.push_back(addr); }
 bool z80::interrupt(uint8_t data) {
 //  std::cout << "INTR " << (int) data << " R.iff1 " << (int)R.iff1 << " R.imode " << (int)R.imode << std::endl;
   if (R.iff1) {
+    last_intr = cycles;
     // push R.pc
     R.sp--;
-    bh.writemem(R.sp, R.pc >> 8);
+    writemem(R.sp, R.pc >> 8);
     R.sp--;
-    bh.writemem(R.sp, R.pc & 0xff);
+    writemem(R.sp, R.pc & 0xff);
     // set new PC
     switch (R.imode) {
     case 0:
@@ -181,7 +197,7 @@ bool z80::interrupt(uint8_t data) {
       break;
     case 2: {
       uint16_t addr = (R.i << 8) | data;
-      R.pc = bh.readmem(addr);
+      R.pc = readmem(addr);
       break;
     }
     default:
@@ -473,42 +489,42 @@ void z80::op_ldrn() {
 
 void z80::op_ldrm() {
   uint8_t *r = regaddr(instr >> 3);
-  *r = bh.readmem(R.hl);
+  *r = readmem(R.hl);
   cycles += 3;
 }
 
 void z80::op_ldmr() {
   uint8_t *r = regaddr(instr);
-  bh.writemem(R.hl, *r);
+  writemem(R.hl, *r);
   cycles += 3;
 }
 
 void z80::op_ldmn() {
-  bh.writemem(R.hl, (uint8_t)(instrv >> 8));
+  writemem(R.hl, (uint8_t)(instrv >> 8));
   R.pc++;
   cycles += 6;
 }
 
 void z80::op_ldarrm() {
   uint16_t *r = regaddr16(instr >> 4);
-  R.a = bh.readmem(*r);
+  R.a = readmem(*r);
   cycles += 3;
 }
 
 void z80::op_ldannm() {
-  R.a = bh.readmem((instrv >> 8) & 0xffff);
+  R.a = readmem((instrv >> 8) & 0xffff);
   R.pc += 2;
   cycles += 9;
 }
 
 void z80::op_ldrrma() {
   uint16_t *r = regaddr16(instr >> 4);
-  bh.writemem(*r, R.a);
+  writemem(*r, R.a);
   cycles += 3;
 }
 
 void z80::op_ldnnma() {
-  bh.writemem((instrv >> 8) & 0xffff, R.a);
+  writemem((instrv >> 8) & 0xffff, R.a);
   R.pc += 2;
   cycles += 9;
 }
@@ -521,14 +537,14 @@ void z80::op_ldrrnn() {
 }
 
 void z80::op_ldhlnnm() {
-  R.hl = bh.readmem((instrv >> 8) & 0xffff);
+  R.hl = readmem((instrv >> 8) & 0xffff);
   R.pc += 2;
   cycles += 12;
 }
 
 void z80::op_ldnnmhl() {
-  bh.writemem(((instrv >> 8) & 0xffff), R.hl & 0xff);
-  bh.writemem(((instrv >> 8) & 0xffff) + 1, R.hl >> 8);
+  writemem(((instrv >> 8) & 0xffff), R.hl & 0xff);
+  writemem(((instrv >> 8) & 0xffff) + 1, R.hl >> 8);
   R.pc += 2;
   cycles += 12;
 }
@@ -541,29 +557,29 @@ void z80::op_ldsphl() {
 void z80::op_pushrr() {
   uint16_t *r = regaddr16(instr >> 4);
   R.sp--;
-  bh.writemem(R.sp, (*r) >> 8);
+  writemem(R.sp, (*r) >> 8);
   R.sp--;
-  bh.writemem(R.sp, (*r) & 0xff);
+  writemem(R.sp, (*r) & 0xff);
   cycles += 7;
 }
 
 void z80::op_poprr() {
   uint16_t *r = regaddr16(instr >> 4);
-  *r = bh.readmem(R.sp);
+  *r = readmem(R.sp);
   R.sp += 2;
   cycles += 6;
 }
 
 void z80::op_pushaf() {
   R.sp--;
-  bh.writemem(R.sp, R.a);
+  writemem(R.sp, R.a);
   R.sp--;
-  bh.writemem(R.sp, R.f);
+  writemem(R.sp, R.f);
   cycles += 7;
 }
 
 void z80::op_popaf() {
-  uint32_t v = bh.readmem(R.sp);
+  uint32_t v = readmem(R.sp);
   R.f = v;
   R.a = v >> 8;
   R.sp += 2;
@@ -600,9 +616,9 @@ void z80::op_exx() {
 }
 
 void z80::op_exsphl() {
-  uint16_t tmp = bh.readmem(R.sp);
-  bh.writemem(R.sp, R.hl & 0xff);
-  bh.writemem(R.sp + 1, R.hl >> 8);
+  uint16_t tmp = readmem(R.sp);
+  writemem(R.sp, R.hl & 0xff);
+  writemem(R.sp + 1, R.hl >> 8);
   R.hl = tmp;
   cycles += 15;
 }
@@ -619,7 +635,7 @@ void z80::op_addn() {
 }
 
 void z80::op_addm() {
-  R.a = i_add8(R.a, bh.readmem(R.hl), instr & 0x8);
+  R.a = i_add8(R.a, readmem(R.hl), instr & 0x8);
   cycles += 3;
 }
 
@@ -635,7 +651,7 @@ void z80::op_subn() {
 }
 
 void z80::op_subm() {
-  R.a = i_sub8(R.a, bh.readmem(R.hl), instr & 0x8);
+  R.a = i_sub8(R.a, readmem(R.hl), instr & 0x8);
   cycles += 3;
 }
 
@@ -651,7 +667,7 @@ void z80::op_andn() {
 }
 
 void z80::op_andm() {
-  R.a = i_and8(R.a, bh.readmem(R.hl));
+  R.a = i_and8(R.a, readmem(R.hl));
   cycles += 3;
 }
 
@@ -667,7 +683,7 @@ void z80::op_xorn() {
 }
 
 void z80::op_xorm() {
-  R.a = i_xor8(R.a, bh.readmem(R.hl));
+  R.a = i_xor8(R.a, readmem(R.hl));
   cycles += 3;
 }
 
@@ -683,7 +699,7 @@ void z80::op_orn() {
 }
 
 void z80::op_orm() {
-  R.a = i_or8(R.a, bh.readmem(R.hl));
+  R.a = i_or8(R.a, readmem(R.hl));
   cycles += 3;
 }
 
@@ -703,8 +719,8 @@ void z80::op_cpn() {
 }
 
 void z80::op_cpm() {
-  uint8_t v = bh.readmem(R.hl);
-  i_sub8(R.a, bh.readmem(R.hl), false);
+  uint8_t v = readmem(R.hl);
+  i_sub8(R.a, readmem(R.hl), false);
   R.f &= ~(fF3 | fF5);
   R.f |= v & (fF3 | fF5);
   cycles += 3;
@@ -717,9 +733,9 @@ void z80::op_incr() {
 
 void z80::op_incm() {
   cycles += 7;
-  uint8_t t = bh.readmem(R.hl);
+  uint8_t t = readmem(R.hl);
   t = i_inc8(t);
-  bh.writemem(R.hl, t);
+  writemem(R.hl, t);
 }
 
 void z80::op_decr() {
@@ -729,9 +745,9 @@ void z80::op_decr() {
 
 void z80::op_decm() {
   cycles += 7;
-  uint8_t t = bh.readmem(R.hl);
+  uint8_t t = readmem(R.hl);
   t = i_dec8(t);
-  bh.writemem(R.hl, t);
+  writemem(R.hl, t);
 }
 
 void z80::op_daa() {
@@ -802,7 +818,7 @@ void z80::op_decrr() {
 }
 
 void z80::op_ret() {
-  R.pc = bh.readmem(R.sp);
+  R.pc = readmem(R.sp);
   R.sp += 2;
   cycles += 6;
 }
@@ -817,9 +833,9 @@ void z80::op_retcc() {
 void z80::op_call() {
   R.pc += 2;
   R.sp--;
-  bh.writemem(R.sp, R.pc >> 8);
+  writemem(R.sp, R.pc >> 8);
   R.sp--;
-  bh.writemem(R.sp, R.pc & 0xff);
+  writemem(R.sp, R.pc & 0xff);
   R.pc = (instrv >> 8) & 0xffff;
   cycles += 13;
 }
@@ -834,9 +850,9 @@ void z80::op_callcc() {
 
 void z80::op_rst() {
   R.sp--;
-  bh.writemem(R.sp, R.pc >> 8);
+  writemem(R.sp, R.pc >> 8);
   R.sp--;
-  bh.writemem(R.sp, R.pc & 0xff);
+  writemem(R.sp, R.pc & 0xff);
   R.pc = instr & 0b00111000;
   cycles += 7;
 }
@@ -873,9 +889,9 @@ void z80::op_djnz() {
   R.bc = (newb << 8) | (R.bc & 0xff);
   if (newb != 0) {
     R.pc += (int8_t)(instrv >> 8); // signed!
-    cycles += 9;
+    cycles += 12;
   } else {
-    cycles += 4;
+    cycles += 7;
   }
 }
 
@@ -988,9 +1004,9 @@ void z80::op_BITS() {
 }
 
 uint8_t z80::op_bits_rotm(bool right, bool c, uint16_t addr) {
-  uint8_t v = bh.readmem(addr);
+  uint8_t v = readmem(addr);
   v = i_rot(v, right, c, true);
-  bh.writemem(addr, v);
+  writemem(addr, v);
   return v;
 }
 
@@ -1001,7 +1017,7 @@ uint8_t z80::op_bits_rotr(bool right, bool c, uint8_t r) {
 }
 
 uint8_t z80::op_bits_shtm(bool right, bool c, uint16_t addr) {
-  uint8_t v = bh.readmem(addr);
+  uint8_t v = readmem(addr);
   R.f = 0;
   if (right) {
     if (v & 1) {
@@ -1022,7 +1038,7 @@ uint8_t z80::op_bits_shtm(bool right, bool c, uint16_t addr) {
   }
   i_setfSZ8(v);
   i_setfP8(v);
-  bh.writemem(addr, v);
+  writemem(addr, v);
   return v;
 }
 
@@ -1053,13 +1069,13 @@ uint8_t z80::op_bits_shtr(bool right, bool c, uint8_t r) {
 
 uint8_t z80::i_bits_setresm(uint8_t op, uint16_t addr) {
   uint8_t bit = (op >> 3) & 7;
-  uint8_t v = bh.readmem(addr);
+  uint8_t v = readmem(addr);
   if (op & 0x40) {
     v |= (1 << bit);
   } else {
     v &= ~(1 << bit);
   }
-  bh.writemem(addr, v);
+  writemem(addr, v);
   return v;
 }
 
@@ -1076,7 +1092,7 @@ uint8_t z80::i_bits_setresr(uint8_t op) {
 
 void z80::i_bits_bitm(uint8_t op, uint16_t addr) {
   uint8_t bit = (op >> 3) & 7;
-  uint8_t v = bh.readmem(addr);
+  uint8_t v = readmem(addr);
   R.f |= fH;
   R.f &= ~(fN | fZ | fS | fPV);
   // *Z513*0-  PV as Z, S set only if n=7 and b7 of r set
@@ -1125,8 +1141,8 @@ void z80::op_EXTD() {
     case 0: { // ldi, ldd
       cycles += 8;
       R.f &= ~(fN | fH | fPV);
-      uint8_t v = bh.readmem(R.hl);
-      bh.writemem(R.de, v);
+      uint8_t v = readmem(R.hl);
+      writemem(R.de, v);
       R.de += s;
       R.hl += s;
       R.bc--;
@@ -1147,7 +1163,7 @@ void z80::op_EXTD() {
     }
     case 1: { // cpi, cpd
       cycles += 8;
-      uint8_t v = bh.readmem(R.hl);
+      uint8_t v = readmem(R.hl);
       uint8_t c = R.f & fC;
       uint8_t h = i_sub8(R.a, v, false);
       R.hl += s;
@@ -1175,7 +1191,7 @@ void z80::op_EXTD() {
     case 2: { // ini, ind, inir...
       cycles += 8;
       uint8_t v = bh.readio(R.bc & 0xff);
-      bh.writemem(R.hl, v);
+      writemem(R.hl, v);
       R.hl += s;
       uint8_t *b = ((uint8_t *)&R.bc) + 1;
       *b = i_dec8(*b);
@@ -1187,7 +1203,7 @@ void z80::op_EXTD() {
     }
     case 3: { // outi, outd, otir
       cycles += 8;
-      uint8_t v = bh.readmem(R.hl);
+      uint8_t v = readmem(R.hl);
       bh.writeio(R.bc, v);
       R.hl += s;
       uint8_t *b = ((uint8_t *)&R.bc) + 1;
@@ -1236,8 +1252,8 @@ void z80::op_EXTD() {
     {
       uint16_t *r = regaddr16(op >> 4);
       uint16_t addr = instrv >> 16;
-      bh.writemem(addr, *r);
-      bh.writemem(addr + 1, *r >> 8);
+      writemem(addr, *r);
+      writemem(addr + 1, *r >> 8);
       R.pc += 2;
       cycles += 12;
       break;
@@ -1246,7 +1262,7 @@ void z80::op_EXTD() {
     {
       uint16_t *r = regaddr16(op >> 4);
       uint16_t addr = instrv >> 16;
-      *r = bh.readmem(addr);
+      *r = readmem(addr);
       R.pc += 2;
       cycles += 12;
       break;
@@ -1288,11 +1304,11 @@ void z80::op_EXTD() {
         break;
       case 6: { /// rrd
         //				Reverse of rld
-        uint8_t hlx = bh.readmem(R.hl);
+        uint8_t hlx = readmem(R.hl);
         uint8_t ax = R.a & 0x0f;
         R.a = (R.a & 0xf0) | (hlx & 0x0f);
         hlx = (hlx >> 4) | (ax << 4);
-        bh.writemem(R.hl, hlx);
+        writemem(R.hl, hlx);
         R.f &= ~(fH | fN);
         i_setfSZ8(R.a);
         i_setfP8(R.a);
@@ -1328,11 +1344,11 @@ void z80::op_EXTD() {
         // order four bits of the Accumulator are
         // copied to the low order four bits of memory location (HL). The
         // contents of the high order bits of the Accumulator are unaffected.
-        uint8_t hlx = bh.readmem(R.hl);
+        uint8_t hlx = readmem(R.hl);
         uint8_t ax = R.a & 0x0f;
         R.a = (R.a & 0xf0) | (hlx >> 4);
         hlx = (hlx << 4) | ax;
-        bh.writemem(R.hl, hlx);
+        writemem(R.hl, hlx);
         R.f &= ~(fH | fN);
         i_setfSZ8(R.a);
         i_setfP8(R.a);
@@ -1411,7 +1427,7 @@ void z80::op_II() {
     R.pc++;
     cycles += 11;
     uint8_t *r = regaddr(op);
-    bh.writemem(addr, *r);
+    writemem(addr, *r);
     break;
   }
 
@@ -1452,8 +1468,8 @@ void z80::op_II() {
   }
   // ld (**), ii
   case 0x22: {
-    bh.writemem(((instrv >> 16) & 0xffff), (*iir) & 0xff);
-    bh.writemem(((instrv >> 16) & 0xffff) + 1, (*iir) >> 8);
+    writemem(((instrv >> 16) & 0xffff), (*iir) & 0xff);
+    writemem(((instrv >> 16) & 0xffff) + 1, (*iir) >> 8);
     R.pc += 2;
     cycles += 12;
     break;
@@ -1485,7 +1501,7 @@ void z80::op_II() {
   }
   // ld ii, (**)
   case 0x2a: {
-    *iir = bh.readmem(instrv >> 16);
+    *iir = readmem(instrv >> 16);
     R.pc += 2;
     cycles += 12;
     break;
@@ -1519,25 +1535,25 @@ void z80::op_II() {
   case 0x34: {
     R.pc += 1;
     cycles += 15;
-    uint8_t v = bh.readmem(addr);
+    uint8_t v = readmem(addr);
     v = i_inc8(v);
-    bh.writemem(addr, v);
+    writemem(addr, v);
     break;
   }
   // dec (ii+*)
   case 0x35: {
     R.pc += 1;
     cycles += 15;
-    uint8_t v = bh.readmem(addr);
+    uint8_t v = readmem(addr);
     v = i_dec8(v);
-    bh.writemem(addr, v);
+    writemem(addr, v);
     break;
   }
   // ld (..), *
   case 0x36: {
     R.pc += 2;
     cycles += 11;
-    bh.writemem(addr, instrv >> 24);
+    writemem(addr, instrv >> 24);
     break;
   }
   // add ii, sp
@@ -1556,7 +1572,7 @@ void z80::op_II() {
   case 0x6e:
   case 0x7e: {
     uint8_t *r = regaddr(op >> 3);
-    *r = bh.readmem(addr);
+    *r = readmem(addr);
     R.pc++;
     cycles += 11;
     break;
@@ -1596,7 +1612,7 @@ void z80::op_II() {
   case 0x8e:
     R.pc++;
     cycles += 11;
-    R.a = i_add8(R.a, bh.readmem(addr), op & 0x8);
+    R.a = i_add8(R.a, readmem(addr), op & 0x8);
     break;
 
   // s{ub,bc} a, ix{h,l}
@@ -1612,7 +1628,7 @@ void z80::op_II() {
   case 0x9e:
     R.pc++;
     cycles += 11;
-    R.a = i_sub8(R.a, bh.readmem(addr), op & 0x8);
+    R.a = i_sub8(R.a, readmem(addr), op & 0x8);
     break;
 
   // and a, ix{h,l}
@@ -1625,7 +1641,7 @@ void z80::op_II() {
   case 0xa6:
     R.pc++;
     cycles += 11;
-    R.a = i_and8(R.a, bh.readmem(addr));
+    R.a = i_and8(R.a, readmem(addr));
     break;
 
   // xor a, ix{h,l}
@@ -1639,7 +1655,7 @@ void z80::op_II() {
   case 0xae:
     R.pc++;
     cycles += 11;
-    R.a = i_xor8(R.a, bh.readmem(addr));
+    R.a = i_xor8(R.a, readmem(addr));
     break;
 
   // and a, ix{h,l}
@@ -1652,7 +1668,7 @@ void z80::op_II() {
   case 0xb6:
     R.pc++;
     cycles += 11;
-    R.a = i_or8(R.a, bh.readmem(addr));
+    R.a = i_or8(R.a, readmem(addr));
     break;
   // cp a, ix{h,l}
   case 0xbc:
@@ -1668,7 +1684,7 @@ void z80::op_II() {
   case 0xbe: {
     R.pc++;
     cycles += 11;
-    uint8_t v = bh.readmem(addr);
+    uint8_t v = readmem(addr);
     i_sub8(R.a, v, false);
     R.f &= ~(fF3 | fF5);
     R.f |= v & (fF3 | fF5);
@@ -1676,24 +1692,24 @@ void z80::op_II() {
   }
   // pop ii
   case 0xe1:
-    *iir = bh.readmem(R.sp);
+    *iir = readmem(R.sp);
     R.sp += 2;
     cycles += 6;
     break;
   // ex (sp), ii
   case 0xe3: {
-    uint16_t tmp = bh.readmem(R.sp);
-    bh.writemem(R.sp, (*iir) & 0xff);
-    bh.writemem(R.sp + 1, (*iir) >> 8);
+    uint16_t tmp = readmem(R.sp);
+    writemem(R.sp, (*iir) & 0xff);
+    writemem(R.sp + 1, (*iir) >> 8);
     *iir = tmp;
     cycles += 15;
   }
   // push ii
   case 0xe5:
     R.sp--;
-    bh.writemem(R.sp, (*iir) >> 8);
+    writemem(R.sp, (*iir) >> 8);
     R.sp--;
-    bh.writemem(R.sp, (*iir) & 0xff);
+    writemem(R.sp, (*iir) & 0xff);
     cycles += 7;
     break;
   // jp (ii)
@@ -1702,6 +1718,7 @@ void z80::op_II() {
     break;
   // ld sp, ii
   case 0xf9:
+    cycles += 2;
     R.sp = *iir;
     break;
 

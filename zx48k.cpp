@@ -498,6 +498,34 @@ void zx48k::run() {
   }
 }
 
+uint64_t zx48k::contention(uint64_t addr, uint64_t ts) {
+ // 14335	6 (until 14341)
+ // This pattern (6,5,4,3,2,1,0,0) continues until 14463 tstates after interrupt, at which point there is
+ // no delay for 96 tstates while the border and horizontal refresh are drawn. The pattern starts again at
+ // 14559 tstates and continues for all 192 lines of screen data. After this, there is no delay until the
+ // end of the frame as the bottom border and vertical refresh happen, and no delay until 14335 tstates
+ // after the start of the next frame as the top border is drawn.
+  if (addr <  0x4000 || addr > 0x7fff) {
+    return 0;
+  }
+  if (ts < 14335 || ts > 57343) {
+    return 0;
+  }
+  ts -= 14335;
+  int line = ts / 224;
+  int px = ts % 224;
+  if (px > 128) {
+    return 0;
+  }
+  int pos = px % 8;
+  if (pos < 7) {
+    return 6 - pos;
+  } else {
+    return 0;
+  }
+}
+
+
 bool zx48k::do_frame() {
   int line = 0;
   for (;;) {

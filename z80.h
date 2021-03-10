@@ -84,6 +84,8 @@ public:
 
 private:
   std::vector<uint16_t> traps;
+  uint32_t readmem(uint16_t addr);
+  void writemem(uint16_t addr, uint8_t value);
 
   uint8_t *regaddr(uint8_t r);
   uint16_t *regaddr16(uint8_t r);
@@ -93,6 +95,7 @@ private:
   bool in_halt = false;
   // used for every tick
   uint64_t cycles = 0; // number of cycles taken
+  uint64_t last_intr = 0;
   uint8_t instr;       // current instruction
   uint32_t instrv; // current instruction + 3 next bytes, volatile so make sure
                    // it won't get optimized

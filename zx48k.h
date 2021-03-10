@@ -37,6 +37,7 @@ class zx48k : public BusHandler { public:
   virtual uint8_t readio(uint16_t address) override;
   virtual void writeio(uint16_t address, uint8_t value) override;
   virtual bool trap(uint16_t pc) override;
+  virtual uint64_t contention(uint64_t address, uint64_t ts) override;
 
 protected:
   bool do_frame();
