@@ -32,7 +32,7 @@ zxtape::zxtape(string filename) {
       file.close();
       throw;
     }
-    this->blocks.push_back(std::make_unique<zxtapeblock>((char *)buf, len));
+    this->blocks_.push_back(std::make_unique<zxtapeblock>((char *)buf, len));
   }
   file.close();
   reset();
@@ -44,7 +44,7 @@ zxtape::zxtape(unsigned char *data, unsigned int len) {
     uint16_t blen = *(uint16_t*) (&data[pos]);
     pos+=2;
     assert(pos + blen <= len);
-    this->blocks.push_back(std::make_unique<zxtapeblock>((char *)&data[pos], blen));
+    this->blocks_.push_back(std::make_unique<zxtapeblock>((char *)&data[pos], blen));
     pos += blen;
   }
   reset();
@@ -52,19 +52,19 @@ zxtape::zxtape(unsigned char *data, unsigned int len) {
 
 
 size_t zxtape::trapload(z80& cpu) {
-  cout << "Traploading " << block << "\n";
-  if (state != PAUSE) {
+  cout << "Traploading " << block_ << "\n";
+  if (state_ != PAUSE) {
     return 0;
   }
-  if (block == blocks.size()) {
+  if (block_ == blocks_.size()) {
     return 0;
   }
-  if (blocks[block]->trapload(cpu)) {
-    size_t blen = blocks[block]->len();
-    block++;
+  if (blocks_[block_]->trapload(cpu)) {
+    size_t blen = blocks_[block_]->len();
+    block_++;
     return blen;
   } else {
-    state = RUNNING;
+    state_ = RUNNING;
     return 0;
   }
 }
@@ -117,32 +117,32 @@ void zxtapeblock::reset() {
   ear_ = false;
 }
 
-void zxtape::reset(int blockk) {
-  state = PAUSE;
-  block = blockk;
-  blocks[block]->reset();
+void zxtape::reset(unsigned int block) {
+  state_ = PAUSE;
+  block_ = block;
+  blocks_[block_]->reset();
 }
 
-void zxtape::go() { state = RUNNING; }
+void zxtape::go() { state_ = RUNNING; }
 
 bool zxtapeblock::bit() { return buf_[(pos_ / 8)] & (1 << (7 - (pos_ % 8))); }
 
 void zxtapeblock::flip() { ear_ = !ear_; }
 
 bool zxtape::update_ticks(uint32_t diff) {
-  if (block == blocks.size()) {
-    state = END;
+  if (block_ == blocks_.size()) {
+    state_ = END;
   }
-  if (state != RUNNING) {
-    return state != END;
+  if (state_ != RUNNING) {
+    return state_ != END;
   }
-  if (blocks[block]->tick(diff)) {
-    block++;
-    if (block == blocks.size()) {
-      state = END;
+  if (blocks_[block_]->tick(diff)) {
+    block_++;
+    if (block_ == blocks_.size()) {
+      state_ = END;
       return false;
     } else {
-      blocks[block]->reset();
+      blocks_[block_]->reset();
     }
   }
   return true;
@@ -222,7 +222,7 @@ bool zxtapeblock::tick(uint32_t diff) {
 }
 
 bool const zxtape::ear() {
-  return (block < blocks.size()) ? blocks[block]->ear() : false;
+  return (block_ < blocks_.size()) ? blocks_[block_]->ear() : false;
 }
 
 bool const zxtapeblock::ear() { return ear_; }
