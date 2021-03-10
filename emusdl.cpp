@@ -27,6 +27,7 @@ EmuSDL::EmuSDL(int w, int h, int hscale, int wscale, const char * name)
   texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
                               SDL_TEXTUREACCESS_STREAMING, w, h);
   pixels = (uint32_t *)malloc(w * h * sizeof(uint32_t));
+  overlay_ = (uint32_t *)malloc(w * h * sizeof(uint32_t));
 }
 
 EmuSDL::~EmuSDL() {
@@ -46,6 +47,10 @@ void EmuSDL::redrawscreen() {
   SDL_SetRenderDrawColor(renderer, (p >> 16) & 0xff, (p >> 8) & 0xff, (p)&0xff, 255);
   SDL_RenderClear(renderer);
   SDL_RenderCopy(renderer, texture, NULL, NULL);
+    SDL_UpdateTexture(texture, NULL, overlay_, w * sizeof(uint32_t));
+  if (draw_overlay_) {
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+  }    
   SDL_RenderPresent(renderer);
 }
 

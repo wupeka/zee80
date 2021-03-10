@@ -96,7 +96,6 @@ protected:
   int audio_started_ = 0;
   std::chrono::steady_clock::time_point tv_s_, tv_e_;
 
-
   uint64_t pausecycles_;
 
 };

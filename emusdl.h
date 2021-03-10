@@ -36,6 +36,8 @@ public:
   }
   inline bool keys_pressed() const { return !keys.empty(); }
   uint32_t *pixels;
+  uint32_t *overlay_;
+  bool draw_overlay_ = false;
 
 private:
   const int w;

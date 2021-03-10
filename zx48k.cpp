@@ -584,7 +584,7 @@ bool zx48k::do_frame() {
 
     while (a_diff_ > EARCYCLES) {
       if (aearbufpos_ == EARBUFOFFSET*INT_AUDIO_BUF_SIZE + EARBUFRESERVE) {
-        cout << "Too much audio in buffer!\n";
+        cout << "Too much audio in buffer! " << a_diff_ << " " << aearbufpos_ << " " << EARBUFOFFSET*INT_AUDIO_BUF_SIZE + EARBUFRESERVE << "\n";
         break;
       }
       aearbuf_[aearbufpos_++] = ear;

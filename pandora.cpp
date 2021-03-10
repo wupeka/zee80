@@ -30,6 +30,8 @@ public:
   virtual bool trap(uint16_t pc) override;
   virtual void writemem(uint16_t address, uint8_t v, bool dotrace) override;
   bool fullscreen = false;
+  bool help_screen_ = false;
+  bool load_screen_ = false;
   uint8_t x_;
   uint8_t y_;
   SDL_Window *mapwindow_;
@@ -143,6 +145,7 @@ bool pandora::processinput() {
     if (debounce_ != SDLK_F8) {
       debounce_ = SDLK_F8;
       pandsnap_->Load(0, &cpu, memory_+16384);
+      ay->reset();
       tape_->reset(7);
     }
   }  else if (emusdl.key_pressed(SDLK_F9)) {
@@ -158,6 +161,8 @@ bool pandora::processinput() {
     cout << "Quitting..." << std::endl;
     emusdl.fullscreen(false);
     return false;
+  } else if (emusdl.key_pressed(SDLK_BACKSPACE)) {
+    keystopress_ = std::vector<std::vector<uint8_t > > { {(0<<3|0)},  {(0<<3|0)}, {(0<<3|0)}, {(0<<3|0), (4 << 3 | 0)}, {(0<<3|0), (4 << 3 | 0)}, {(0<<3|0), (4 << 3 | 0)}, {(0<<3|0), (4 << 3 | 0)} };
   } else { // if (emusdl.keys_pressed()) {
     debounce_ = 0;
   }
