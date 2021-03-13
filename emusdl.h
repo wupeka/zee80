@@ -29,6 +29,7 @@ public:
   void waitevent();
   void fullscreen(bool fs);
   inline const keys_t &get_keys() const { return keys; };
+  void clearkey(SDL_Keycode k) { keys.erase(k); };
   inline int get_width() const { return w; }
   inline int get_height() const { return h; }
   inline bool key_pressed(const keys_t::value_type &value) const {

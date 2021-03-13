@@ -6,6 +6,7 @@
  */
 
 #include "pandora.h"
+#include "pandsnap.h"
 #include "zx48k.h"
 #include "zx48krom.h"
 #include <SDL2/SDL_image.h>
@@ -16,7 +17,6 @@
 #include <fstream>
 #include <iostream>
 #include <strings.h>
-#include "pandsnap.h"
 
 using namespace std;
 
@@ -115,7 +115,7 @@ bool pandora::trap(uint16_t pc) {
   if (pc == 0x8dc5) {
     std::cout << "FINISHED" << std::endl;
     auto_ = true;
-    cpu.reset();    
+    cpu.reset();
     return true;
   } else {
     return zx48k::trap(pc);
@@ -123,54 +123,50 @@ bool pandora::trap(uint16_t pc) {
 }
 pandora::pandora() {}
 
-void pandora::redraw_snap_screen() {
-}
+void pandora::redraw_snap_screen() {}
 
 void pandora::load_snap() {
-      pandsnap_->Load(snap_selected_, &cpu, memory_+16384);
-      ay->reset();
-      tape_->reset(7);
+  pandsnap_->Load(snap_selected_, &cpu, memory_ + 16384);
+  ay->reset();
+  tape_->reset(7);
+  emusdl.clearkey(SDLK_RETURN);
 }
 
 void pandora::save_snap() {
-      pandsnap_->Save(snap_selected_, &cpu, memory_+16384);
+  pandsnap_->Save(snap_selected_, &cpu, memory_ + 16384);
 }
 
 bool pandora::processinput() {
   emusdl.readinput();
-  if (help_screen_) {
-    if (!emusdl.get_keys().empty()) {
-       if (debounce_ != 0 && emusdl.key_pressed(SDLK_F1)) {
-         return true;
-       }
-       help_screen_ = false;
-       emusdl.draw_overlay_ = false;
-    } else {
-      debounce_ = 0;
-    }
+  if (!emusdl.get_keys().empty() && debounce_ != 0) {
     return true;
   }
-  
+
+  if (emusdl.get_keys().empty()) {
+    debounce_ = 0;
+    return true;
+  }
+
+  debounce_ = *emusdl.get_keys().begin();
+
+  if (help_screen_) {
+    help_screen_ = false;
+    emusdl.draw_overlay_ = false;
+    return true;
+  }
+
   if (load_screen_ || save_screen_) {
-    if (!emusdl.get_keys().empty() && debounce_ != 0) {
-      return true;
-    } else {
-      debounce_ = 0;
-    }
     if (emusdl.key_pressed(SDLK_DOWN)) {
-      debounce_ = SDLK_DOWN;
       if (snap_selected_ < SNAP_SLOTS) {
         ++snap_selected_;
       }
       redraw_snap_screen();
     } else if (emusdl.key_pressed(SDLK_UP)) {
-      debounce_ = SDLK_UP;
       if (snap_selected_ > 0) {
         --snap_selected_;
       }
       redraw_snap_screen();
     } else if (emusdl.key_pressed(SDLK_RETURN)) {
-      debounce_ = SDLK_RETURN;
       if (load_screen_) {
         if (pandsnap_->Empty(snap_selected_)) {
           return true;
@@ -186,62 +182,46 @@ bool pandora::processinput() {
       emusdl.draw_overlay_ = false;
     }
     return true;
-  } 
-  
+  }
+
   if (emusdl.key_pressed(SDLK_F1)) {
-    if (debounce_ != SDLK_F1) {
-      debounce_ = SDLK_F1;
-      help_screen_ = true;
-      emusdl.draw_overlay_ = true;
-      // fill the screen!
-    }
+    help_screen_ = true;
+    emusdl.draw_overlay_ = true;
+    // fill the screen!
   } else if (emusdl.key_pressed(SDLK_F2)) {
-    if (debounce_ != SDLK_F2) {
-      debounce_ = SDLK_F2;
-      fullscreen = !fullscreen;
-      emusdl.fullscreen(fullscreen);
-    }
+    fullscreen = !fullscreen;
+    emusdl.fullscreen(fullscreen);
   } else if (emusdl.key_pressed(SDLK_F5)) {
-    if (debounce_ != SDLK_F5) {
-      debounce_ = SDLK_F5;
-      showmap();
-    }
+    showmap();
   } else if (emusdl.key_pressed(SDLK_F6)) {
-    if (debounce_ != SDLK_F6) {
-      debounce_ = SDLK_F6;
-      trace_ = true;
-    }
+    trace_ = true;
   } else if (emusdl.key_pressed(SDLK_F7)) {
-    if (debounce_ != SDLK_F7) {
-      debounce_ = SDLK_F7;
-      save_screen_ = true;
-      emusdl.draw_overlay_ = true;
-      redraw_snap_screen();
-    }
+    save_screen_ = true;
+    emusdl.draw_overlay_ = true;
+    redraw_snap_screen();
   } else if (emusdl.key_pressed(SDLK_F8)) {
-    if (debounce_ != SDLK_F8) {
-      debounce_ = SDLK_F8;
-      load_screen_ = true;
-      emusdl.draw_overlay_ = true;
-      redraw_snap_screen();
-    }
-  }  else if (emusdl.key_pressed(SDLK_F9)) {
-    if (debounce_ != SDLK_F9) {
-      debounce_ = SDLK_F9;
-      int x,y;
-      cin >> x;
-      cin >> y;
-      zx48k::writemem(0x6a9e, x, false);
-      zx48k::writemem(0x6a9f, y, false);
-    }
+    load_screen_ = true;
+    emusdl.draw_overlay_ = true;
+    redraw_snap_screen();
+  } else if (emusdl.key_pressed(SDLK_F9)) {
+    int x, y;
+    cin >> x;
+    cin >> y;
+    zx48k::writemem(0x6a9e, x, false);
+    zx48k::writemem(0x6a9f, y, false);
   } else if (emusdl.key_pressed(SDLK_F4)) {
     cout << "Quitting..." << std::endl;
     emusdl.fullscreen(false);
     return false;
   } else if (emusdl.key_pressed(SDLK_BACKSPACE)) {
-    keystopress_ = std::vector<std::vector<uint8_t > > { {(0<<3|0)},  {(0<<3|0)}, {(0<<3|0)}, {(0<<3|0), (4 << 3 | 0)}, {(0<<3|0), (4 << 3 | 0)}, {(0<<3|0), (4 << 3 | 0)}, {(0<<3|0), (4 << 3 | 0)} };
-  } else { // if (emusdl.keys_pressed()) {
-    debounce_ = 0;
+    keystopress_ =
+        std::vector<std::vector<uint8_t>>{{(0 << 3 | 0)},
+                                          {(0 << 3 | 0)},
+                                          {(0 << 3 | 0)},
+                                          {(0 << 3 | 0), (4 << 3 | 0)},
+                                          {(0 << 3 | 0), (4 << 3 | 0)},
+                                          {(0 << 3 | 0), (4 << 3 | 0)},
+                                          {(0 << 3 | 0), (4 << 3 | 0)}};
   }
   upmap();
   return true;
