@@ -5,7 +5,7 @@
  *      Author: wpk
  */
 
-#include "pandora.h"
+#include "pandora-resources.h"
 #include "pandsnap.h"
 #include "spectext.h"
 #include "zx48k.h"
