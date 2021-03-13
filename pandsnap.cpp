@@ -74,4 +74,7 @@ void Pandsnap::Load(int slot, z80* cpu, uint8_t* mem) {
     fread(mem, SNAP_MEMSIZE, 1, datafile_);
     fflush(datafile_);
 }
-    
+
+bool Pandsnap::Empty(int slot) {
+    return slots_[slot] == 0;
+}

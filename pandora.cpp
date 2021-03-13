@@ -26,12 +26,17 @@ public:
   void initialize();
   void showmap();
   void upmap();
+  void redraw_snap_screen();
+  void save_snap();
+  void load_snap();
   virtual bool processinput() override;
   virtual bool trap(uint16_t pc) override;
   virtual void writemem(uint16_t address, uint8_t v, bool dotrace) override;
   bool fullscreen = false;
   bool help_screen_ = false;
   bool load_screen_ = false;
+  bool save_screen_ = false;
+  int snap_selected_ = 0;
   uint8_t x_;
   uint8_t y_;
   SDL_Window *mapwindow_;
@@ -118,9 +123,79 @@ bool pandora::trap(uint16_t pc) {
 }
 pandora::pandora() {}
 
+void pandora::redraw_snap_screen() {
+}
+
+void pandora::load_snap() {
+      pandsnap_->Load(snap_selected_, &cpu, memory_+16384);
+      ay->reset();
+      tape_->reset(7);
+}
+
+void pandora::save_snap() {
+      pandsnap_->Save(snap_selected_, &cpu, memory_+16384);
+}
+
 bool pandora::processinput() {
   emusdl.readinput();
-  if (emusdl.key_pressed(SDLK_F2)) {
+  if (help_screen_) {
+    if (!emusdl.get_keys().empty()) {
+       if (debounce_ != 0 && emusdl.key_pressed(SDLK_F1)) {
+         return true;
+       }
+       help_screen_ = false;
+       emusdl.draw_overlay_ = false;
+    } else {
+      debounce_ = 0;
+    }
+    return true;
+  }
+  
+  if (load_screen_ || save_screen_) {
+    if (!emusdl.get_keys().empty() && debounce_ != 0) {
+      return true;
+    } else {
+      debounce_ = 0;
+    }
+    if (emusdl.key_pressed(SDLK_DOWN)) {
+      debounce_ = SDLK_DOWN;
+      if (snap_selected_ < SNAP_SLOTS) {
+        ++snap_selected_;
+      }
+      redraw_snap_screen();
+    } else if (emusdl.key_pressed(SDLK_UP)) {
+      debounce_ = SDLK_UP;
+      if (snap_selected_ > 0) {
+        --snap_selected_;
+      }
+      redraw_snap_screen();
+    } else if (emusdl.key_pressed(SDLK_RETURN)) {
+      debounce_ = SDLK_RETURN;
+      if (load_screen_) {
+        if (pandsnap_->Empty(snap_selected_)) {
+          return true;
+        }
+        load_snap();
+      } else {
+        save_snap();
+      }
+      load_screen_ = save_screen_ = false;
+      emusdl.draw_overlay_ = false;
+    } else if (!emusdl.get_keys().empty()) {
+      load_screen_ = save_screen_ = false;
+      emusdl.draw_overlay_ = false;
+    }
+    return true;
+  } 
+  
+  if (emusdl.key_pressed(SDLK_F1)) {
+    if (debounce_ != SDLK_F1) {
+      debounce_ = SDLK_F1;
+      help_screen_ = true;
+      emusdl.draw_overlay_ = true;
+      // fill the screen!
+    }
+  } else if (emusdl.key_pressed(SDLK_F2)) {
     if (debounce_ != SDLK_F2) {
       debounce_ = SDLK_F2;
       fullscreen = !fullscreen;
@@ -131,22 +206,24 @@ bool pandora::processinput() {
       debounce_ = SDLK_F5;
       showmap();
     }
-  } else if (emusdl.key_pressed(SDLK_F7)) {
-    if (debounce_ != SDLK_F7) {
-      debounce_ = SDLK_F7;
-      pandsnap_->Save(0, &cpu, memory_+16384);
-    }
   } else if (emusdl.key_pressed(SDLK_F6)) {
     if (debounce_ != SDLK_F6) {
       debounce_ = SDLK_F6;
       trace_ = true;
     }
+  } else if (emusdl.key_pressed(SDLK_F7)) {
+    if (debounce_ != SDLK_F7) {
+      debounce_ = SDLK_F7;
+      save_screen_ = true;
+      emusdl.draw_overlay_ = true;
+      redraw_snap_screen();
+    }
   } else if (emusdl.key_pressed(SDLK_F8)) {
     if (debounce_ != SDLK_F8) {
       debounce_ = SDLK_F8;
-      pandsnap_->Load(0, &cpu, memory_+16384);
-      ay->reset();
-      tape_->reset(7);
+      load_screen_ = true;
+      emusdl.draw_overlay_ = true;
+      redraw_snap_screen();
     }
   }  else if (emusdl.key_pressed(SDLK_F9)) {
     if (debounce_ != SDLK_F9) {

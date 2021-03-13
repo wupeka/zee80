@@ -23,6 +23,7 @@ public:
     std::vector<std::string> List();
     void Save(int slot, z80* cpu, uint8_t* mem);
     void Load(int slot, z80* cpu, uint8_t* mem);
+    bool Empty(int slot);
 private:
     FILE * datafile_;
     void init(std::string filename);
