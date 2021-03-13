@@ -31,10 +31,10 @@ std::vector<std::string> Pandsnap::List() {
         if (slot != 0) {
             char buf[512];
             std::tm* tm = std::localtime(&slot);
-            std::strftime(buf, 512, "%y-%m-%d %H:%M", tm);
+            std::strftime(buf, 512, "  %Y-%m-%d  %H:%M  ", tm);
             rv.push_back(buf);
         } else {
-            rv.push_back("<WOLNY>");
+            rv.push_back("      <WOLNY>      ");
         }
     }
     return rv;
@@ -61,6 +61,7 @@ void Pandsnap::Save(int slot, z80* cpu, uint8_t* mem) {
     fseek(datafile_, SNAP_HDR_SIZE + slot * SNAP_BLOCK_SIZE + 512, SEEK_SET);
     fwrite((char*) mem, SNAP_MEMSIZE, 1, datafile_);
     fflush(datafile_);
+    slots_[slot] = tm;
 }
 
 void Pandsnap::Load(int slot, z80* cpu, uint8_t* mem) {

@@ -7,6 +7,7 @@
 
 #include "pandora.h"
 #include "pandsnap.h"
+#include "spectext.h"
 #include "zx48k.h"
 #include "zx48krom.h"
 #include <SDL2/SDL_image.h>
@@ -33,6 +34,7 @@ public:
   virtual bool trap(uint16_t pc) override;
   virtual void writemem(uint16_t address, uint8_t v, bool dotrace) override;
   bool fullscreen = false;
+  bool intro_loaded_ = false;
   bool help_screen_ = false;
   bool load_screen_ = false;
   bool save_screen_ = false;
@@ -44,6 +46,8 @@ public:
   SDL_Texture *maptexture_;
   SDL_Texture *dot_;
   Pandsnap *pandsnap_;
+  SpecText *spectext_;
+  uint32_t finicount_ = 0;
 };
 
 void pandora::showmap() {
@@ -84,13 +88,15 @@ void pandora::upmap() {
 
 void pandora::initialize() {
   memcpy(memory_, zx48k_rom, zx48k_rom_len);
-  pandsnap_ = new Pandsnap("snapshot.dat");
+  pandsnap_ = new Pandsnap("pandora.sav");
+  spectext_ = new SpecText(maszyna_he_bin, emusdl.overlay_, emusdl.get_width(), emusdl.get_height());
   border = 7;
   tape_ = new zxtape(PANDORA_TAP, PANDORA_TAP_len);
   trap_ = true;
   auto_ = true;
   cpu.addtrap(0x056c);
   cpu.addtrap(0x15e1);
+  cpu.addtrap(0xcb03);
   cpu.addtrap(0x8dc5);
   emusdl.settitle("Puszka Pandory");
 }
@@ -113,19 +119,54 @@ void pandora::writemem(uint16_t address, uint8_t v, bool dotrace) {
 
 bool pandora::trap(uint16_t pc) {
   if (pc == 0x8dc5) {
-    std::cout << "FINISHED" << std::endl;
+    // Game finished
+    if (finicount_++ < 1500000) {
+      return false;
+    } 
+    finicount_ = 0;
     auto_ = true;
+    tape_->reset(7);
     cpu.reset();
     return true;
+  } else if (pc == 0xcb03) {
+    // Intro loading
+    intro_loaded_ = true;
+    return false;
   } else {
     return zx48k::trap(pc);
   }
 }
 pandora::pandora() {}
 
-void pandora::redraw_snap_screen() {}
+void pandora::redraw_snap_screen() {
+  uint32_t bg = 0x00CDCDCD;
+  uint32_t fg = 0x00000000;
+  for (int i=0; i<emusdl.get_width() * emusdl.get_height(); i++) {
+    emusdl.overlay_[i] = bg;
+  }
+  if (load_screen_) {
+    spectext_->Write("WYBIERZ SLOT DO WCZYTANIA", 30,30, 1, bg, fg);
+  } else {
+    spectext_->Write("WYBIERZ SLOT DO ZAPISU", 43,30, 1, bg, fg);
+  }
+  int y=45;
+  auto list = pandsnap_->List();
+  for (int i=0; i<list.size(); i++) {
+    uint32_t bgg, fgg;
+    if (snap_selected_ == i) {
+      bgg = fg;
+      fgg = bg;
+    } else {
+      bgg = bg;
+      fgg = fg;
+    }
+    spectext_->Write(list[i].data(), 59, y, 0, bgg, fgg);
+    y+=12;
+  } 
+}
 
 void pandora::load_snap() {
+  std::cout << "Loading snap " << snap_selected_ << "\n";
   pandsnap_->Load(snap_selected_, &cpu, memory_ + 16384);
   ay->reset();
   tape_->reset(7);
@@ -133,6 +174,7 @@ void pandora::load_snap() {
 }
 
 void pandora::save_snap() {
+  std::cout << "Saving snap " << snap_selected_ << "\n";
   pandsnap_->Save(snap_selected_, &cpu, memory_ + 16384);
 }
 
@@ -157,7 +199,7 @@ bool pandora::processinput() {
 
   if (load_screen_ || save_screen_) {
     if (emusdl.key_pressed(SDLK_DOWN)) {
-      if (snap_selected_ < SNAP_SLOTS) {
+      if (snap_selected_ < SNAP_SLOTS-1) {
         ++snap_selected_;
       }
       redraw_snap_screen();
@@ -195,11 +237,11 @@ bool pandora::processinput() {
     showmap();
   } else if (emusdl.key_pressed(SDLK_F6)) {
     trace_ = true;
-  } else if (emusdl.key_pressed(SDLK_F7)) {
+  } else if (emusdl.key_pressed(SDLK_F7) && intro_loaded_) {
     save_screen_ = true;
     emusdl.draw_overlay_ = true;
     redraw_snap_screen();
-  } else if (emusdl.key_pressed(SDLK_F8)) {
+  } else if (emusdl.key_pressed(SDLK_F8) && intro_loaded_) {
     load_screen_ = true;
     emusdl.draw_overlay_ = true;
     redraw_snap_screen();

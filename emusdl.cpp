@@ -36,6 +36,7 @@ EmuSDL::~EmuSDL() {
   SDL_DestroyWindow(window);
   SDL_Quit();
 }
+
 void EmuSDL::settitle(const char *title) {
   SDL_SetWindowTitle(window, title);
 }
