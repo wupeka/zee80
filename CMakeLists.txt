@@ -1,10 +1,29 @@
 cmake_minimum_required (VERSION 2.8.11)
 
-set(CMAKE_SYSTEM_NAME Windows)
-set(TOOLCHAIN_PREFIX i686-w64-mingw32)
-set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
-set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
-set(CMAKE_RC_COMPILER ${TOOLCHAIN_PREFIX}-windres)
+find_package(Git)
+if(GIT_FOUND)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+    WORKING_DIRECTORY "${local_dir}"
+    OUTPUT_VARIABLE _build_version
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  message( STATUS "GIT hash: ${_build_version}")
+else()
+  message(STATUS "GIT not found")
+endif()
+ 
+string(TIMESTAMP _time_stamp)
+ 
+configure_file(gitversion.h.in gitversion.h @ONLY)
+
+
+
+#set(CMAKE_SYSTEM_NAME Windows)
+#set(TOOLCHAIN_PREFIX i686-w64-mingw32)
+#set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
+#set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
+#set(CMAKE_RC_COMPILER ${TOOLCHAIN_PREFIX}-windres)
 
 get_filename_component(srcdir "${CMAKE_SOURCE_DIR}" REALPATH)
 get_filename_component(bindir "${CMAKE_BINARY_DIR}" REALPATH)
@@ -28,7 +47,7 @@ else()
 endif()
 
 #include(${wxWidgets_USE_FILE})
-set(CMAKE_CXX_FLAGS "-O2 -ggdb -Wall -mtune=native -Wall -std=c++17 -I/usr/local/include -Iwin32/SDL2/include")
+set(CMAKE_CXX_FLAGS "-O2 -ggdb -Wall -I. -mtune=native -Wall -std=c++17 -I/usr/local/include -Iwin32/SDL2/include")
 set(CMAKE_EXE_LINKER_FLAGS "-L/usr/local/lib")
 
 add_library (zee80 z80.cpp)

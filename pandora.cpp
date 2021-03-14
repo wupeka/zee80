@@ -10,6 +10,7 @@
 #include "spectext.h"
 #include "zx48k.h"
 #include "zx48krom.h"
+#include "gitversion.h"
 #include <SDL2/SDL_image.h>
 #include <Ym2149Ex.h>
 #include <YmProfiles.h>
@@ -88,6 +89,7 @@ void pandora::upmap() {
 }
 
 void pandora::initialize() {
+  memset(memory_, 0x0f, MEMORY_SIZE);
   memcpy(memory_, zx48k_rom, zx48k_rom_len);
   pandsnap_ = new Pandsnap("pandora.sav");
   spectext_ = new SpecText(maszyna_he_bin, emusdl.overlay_, emusdl.get_width(), emusdl.get_height());
@@ -169,18 +171,27 @@ void pandora::redraw_snap_screen() {
 void pandora::draw_help_screen() {
   uint32_t bg = 0x00CDCDCD;
   uint32_t fg = 0x00000000;
+                   // "                             "
+                   // "           abcdef0           "
+  char helpstring[] = "           " GIT_REVISION "           ";
+//  char helpstring[] = " " GIT_REVISION " " BUILD_TIMESTAMP;
+  char *h = helpstring;
+  while(*h) {
+    *h=toupper(*h);
+    ++h;
+  }
   int x=15;
   for (int i=0; i<emusdl.get_width() * emusdl.get_height(); i++) {
     emusdl.overlay_[i] = bg;
   }
                 // "                             "
-  spectext_->Write("       PUSZKA PANDORY        ", x, 30, 1, bg, fg);
+  spectext_->Write("       PUSZKA PANDORY        ", x, 20, 1, bg, fg);
   int y = 45;
   spectext_->Write("    F1 - EKRAN POMOCY        ", x, y, 1, bg, fg);
   y += 12;
   spectext_->Write("    F2 - PElNY EKRAN         ", x, y, 1, bg, fg );
   y += 12;
-  spectext_->Write("    F3 - WYLaCZ TURBOLOAD    ", x, y, 1, bg, fg );
+  spectext_->Write("    F3 - WYlaCZ TURBOLOAD    ", x, y, 1, bg, fg );
   y += 12;
   spectext_->Write("    F4 - WYJDx Z GRY         ", x, y, 1, bg, fg );
   y += 12;
@@ -197,6 +208,8 @@ void pandora::draw_help_screen() {
   spectext_->Write(" PlYNac, WZIac, sCIac, WEJsc ", x, y, 1, bg, fg );
   y += 24;
   spectext_->Write("    EMULATOR ZEE80: wpk      ", x, y, 1, bg, fg );
+  y += 12;
+  spectext_->Write(helpstring, x, y, 1, bg, fg );
 }
 
 void pandora::load_snap() {

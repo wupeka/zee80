@@ -70,6 +70,9 @@ void EmuSDL::readinput() {
     // ry = 25 * (40 - y_)
     // 
       std::cout << event.button.x/25 + 1 << " " << 40 - (event.button.y/25) << std::endl;
+      break;
+    case SDL_QUIT:
+      keys.insert(SDLK_F4);
       break; 
     default:
       break;

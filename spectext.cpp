@@ -8,7 +8,7 @@ void SpecText::Draw(unsigned char chr, int x, int y, uint32_t bg, uint32_t fg) {
   for (int yy = 0; yy < 8; ++yy) {
     for (int xx = 0; xx < 8; ++xx) {
       int pos = (y + yy) * w_ + (x + xx);
-      bool pix = (chardefs_[(chr - 32) * 8 + yy] >> (8 - xx)) & 1;
+      bool pix = (chardefs_[(chr - 32) * 8 + yy] >> (7 - xx)) & 1;
       pixels_[pos] = pix ? fg : bg;
     }
   }

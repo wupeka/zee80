@@ -67,7 +67,7 @@ zx48k::zx48k()
 }
 
 void zx48k::initialize() {
-  //  memset(memory_, 0xff, MEMORY_SIZE);
+  memset(memory_, 0x0f, MEMORY_SIZE);
   romfile = "testrom.bin";
   std::ifstream fin(romfile, std::ios::in | std::ios::binary);
   if (fin.fail()) {
