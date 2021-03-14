@@ -436,7 +436,7 @@ void zx48k::dump() {
 
 bool zx48k::trap(uint16_t pc) {
   if (pc == 0x056c) { // start tape load
-    if (tape_) {
+    if (tape_ && quickload_) {
       size_t len = tape_->trapload(cpu);
       if (len > 0) {
         pausecycles_ = len * 20;
@@ -445,6 +445,8 @@ bool zx48k::trap(uint16_t pc) {
         didtrap_ = false;
       }
       return didtrap_;
+    } else if (tape_) {
+      tape_->go(true);
     }	
     didtrap_ = false;
     return false;

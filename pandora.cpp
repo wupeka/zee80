@@ -27,6 +27,7 @@ public:
   void initialize();
   void showmap();
   void upmap();
+  void draw_help_screen();
   void redraw_snap_screen();
   void save_snap();
   void load_snap();
@@ -165,6 +166,39 @@ void pandora::redraw_snap_screen() {
   } 
 }
 
+void pandora::draw_help_screen() {
+  uint32_t bg = 0x00CDCDCD;
+  uint32_t fg = 0x00000000;
+  int x=15;
+  for (int i=0; i<emusdl.get_width() * emusdl.get_height(); i++) {
+    emusdl.overlay_[i] = bg;
+  }
+                // "                             "
+  spectext_->Write("       PUSZKA PANDORY        ", x, 30, 1, bg, fg);
+  int y = 45;
+  spectext_->Write("    F1 - EKRAN POMOCY        ", x, y, 1, bg, fg);
+  y += 12;
+  spectext_->Write("    F2 - PElNY EKRAN         ", x, y, 1, bg, fg );
+  y += 12;
+  spectext_->Write("    F3 - WYLaCZ TURBOLOAD    ", x, y, 1, bg, fg );
+  y += 12;
+  spectext_->Write("    F4 - WYJDx Z GRY         ", x, y, 1, bg, fg );
+  y += 12;
+  spectext_->Write("    F5 - WYsWIETL MAPe       ", x, y, 1, bg, fg );
+  y += 12;
+  spectext_->Write("    F7 - ZAPISZ GRe          ", x, y, 1, bg, fg );
+  y += 12;
+  spectext_->Write("    F8 - ZAlADUJ GRe         ", x, y, 1, bg, fg );
+  y += 24;
+  spectext_->Write("    PORUSZANIE:  N E S W     ", x, y, 1, bg, fg );
+  y += 12;
+  spectext_->Write("KOMENDY W BEZOKOLICZNIKU, NP:", x, y, 1, bg, fg );
+  y += 12;
+  spectext_->Write(" PlYNac, WZIac, sCIac, WEJsc ", x, y, 1, bg, fg );
+  y += 24;
+  spectext_->Write("    EMULATOR ZEE80: wpk      ", x, y, 1, bg, fg );
+}
+
 void pandora::load_snap() {
   std::cout << "Loading snap " << snap_selected_ << "\n";
   pandsnap_->Load(snap_selected_, &cpu, memory_ + 16384);
@@ -228,11 +262,13 @@ bool pandora::processinput() {
 
   if (emusdl.key_pressed(SDLK_F1)) {
     help_screen_ = true;
+    draw_help_screen();
     emusdl.draw_overlay_ = true;
-    // fill the screen!
   } else if (emusdl.key_pressed(SDLK_F2)) {
     fullscreen = !fullscreen;
     emusdl.fullscreen(fullscreen);
+  } else if (emusdl.key_pressed(SDLK_F3)) {
+    quickload_ = !quickload_;
   } else if (emusdl.key_pressed(SDLK_F5)) {
     showmap();
   } else if (emusdl.key_pressed(SDLK_F6)) {

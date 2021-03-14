@@ -39,7 +39,7 @@ class zxtape {
 public:
   zxtape(std::string filename);
   zxtape(unsigned char *data, unsigned int len);
-  void go();
+  void go(bool singleblock = false);
   bool update_ticks(uint32_t diff);
   bool const ear();
   size_t trapload(z80& cpu);
@@ -49,5 +49,6 @@ private:
   enum { PAUSE, RUNNING, END } state_ = PAUSE;
   std::vector<std::unique_ptr<zxtapeblock> > blocks_;
   unsigned block_;
+  bool singleblock_;
 };
 #endif /* ZXTAPE_H_ */

@@ -123,7 +123,7 @@ void zxtape::reset(unsigned int block) {
   blocks_[block_]->reset();
 }
 
-void zxtape::go() { state_ = RUNNING; }
+void zxtape::go(bool singleblock) { singleblock_ = singleblock; state_ = RUNNING; }
 
 bool zxtapeblock::bit() { return buf_[(pos_ / 8)] & (1 << (7 - (pos_ % 8))); }
 
@@ -143,6 +143,9 @@ bool zxtape::update_ticks(uint32_t diff) {
       return false;
     } else {
       blocks_[block_]->reset();
+      if (singleblock_) {
+        state_ = PAUSE;
+      }
     }
   }
   return true;

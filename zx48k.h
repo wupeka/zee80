@@ -81,6 +81,7 @@ protected:
   std::set<uint8_t> keyspressed;
   bool trace_ = false;
   bool trap_ = false;
+  bool quickload_ = true;
   bool auto_ = false;
   std::vector<std::vector<uint8_t >> keystopress_;
   uint64_t keypressedtime_ = 0;

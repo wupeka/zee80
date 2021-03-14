@@ -37,7 +37,7 @@ include_directories (SYSTEM ${bindir}/libstsound)
 
 if (MINGW)
 	set(hostsetting --host=i686-w64-mingw32)
-	set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -s SDL2/lib/libSDL2_image.a")
+	set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -s SDL2/lib/libSDL2_image.a -mwindows")
 endif()
 
 
