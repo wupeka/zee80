@@ -83,6 +83,7 @@ protected:
   bool trap_ = false;
   bool quickload_ = true;
   bool auto_ = false;
+  int autoload_delay_ = 0;
   std::vector<std::vector<uint8_t >> keystopress_;
   uint64_t keypressedtime_ = 0;
   static constexpr uint64_t keypresstime_ = 100000; // ~20ms

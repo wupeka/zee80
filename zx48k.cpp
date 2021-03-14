@@ -451,8 +451,11 @@ bool zx48k::trap(uint16_t pc) {
     didtrap_ = false;
     return false;
   } else if (pc == 0x15e1 && auto_) {
-    auto_ = false;
-    keystopress_ = std::vector<std::vector<uint8_t > > { { (6<<3|3)}, {}, {(7<<3|1)}, {(7<<3|1), (5 << 3 | 0)}, {}, {(7<<3|1)}, {(7<<3|1), (5 << 3 | 0)}, {}, {(6 << 3 | 0)} };
+    if (autoload_delay_++ > 3000) {
+      auto_ = false;
+      keystopress_ = std::vector<std::vector<uint8_t > > { { (6<<3|3)}, {}, {(7<<3|1)}, {(7<<3|1), (5 << 3 | 0)}, {}, {(7<<3|1)}, {(7<<3|1), (5 << 3 | 0)}, {}, {(6 << 3 | 0)} };
+      autoload_delay_ = 0;
+    }
     return false;
   }
   return false;
