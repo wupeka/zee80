@@ -64,7 +64,7 @@ void pandora::showmap() {
   maprenderer_ = SDL_CreateRenderer(mapwindow_, -1, 0);
   SDL_RenderSetLogicalSize(maprenderer_, 1000, 1000);
   SDL_Surface *surf =
-      IMG_Load_RW(SDL_RWFromMem(PANDORA_PNG, PANDORA_PNG_len), 1);
+      IMG_Load_RW(SDL_RWFromMem(PANDORA_GIF, PANDORA_GIF_len), 1);
   maptexture_ = SDL_CreateTextureFromSurface(maprenderer_, surf);
   dot_ = SDL_CreateTexture(maprenderer_, SDL_PIXELFORMAT_ARGB8888,
                            SDL_TEXTUREACCESS_STREAMING, 25, 25);
