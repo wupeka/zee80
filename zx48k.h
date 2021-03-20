@@ -24,8 +24,8 @@
 #define INT_AUDIO_BUF_SIZE 2048
 #define EARBUFOFFSET 2
 #define EARBUFRESERVE 0
-//#define EARCYCLES 74
-#define EARCYCLES 80
+#define EARCYCLES 79
+//#define EARCYCLES 80
 class zx48k : public BusHandler { public:
   zx48k();
   void parse_opts(int argc, char **argv);
@@ -45,7 +45,7 @@ protected:
   static constexpr int MEMORY_SIZE = 65536;
   z80 cpu;
   ymsample abuf_[2*INT_AUDIO_BUF_SIZE];
-  bool aearbuf_[EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE];
+  char aearbuf_[EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE];
   int aearbufpos_ = 0;
   int abuf_pos_ = 0;
 
