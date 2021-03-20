@@ -389,9 +389,9 @@ bool pandora::processinput() {
     quickload_ = !quickload_;
   } else if (emusdl.key_pressed(SDLK_F5)) {
     showmap();
-  } else if (emusdl.key_pressed(SDLK_F6)) {
+  } /* else if (emusdl.key_pressed(SDLK_F6)) {
     trace_ = true;
-  } else if (emusdl.key_pressed(SDLK_F7) && intro_loaded_) {
+  } */ else if (emusdl.key_pressed(SDLK_F7) && intro_loaded_) {
     save_screen_ = true;
     emusdl.draw_overlay_ = true;
     redraw_snap_screen();
@@ -399,13 +399,13 @@ bool pandora::processinput() {
     load_screen_ = true;
     emusdl.draw_overlay_ = true;
     redraw_snap_screen();
-  } else if (emusdl.key_pressed(SDLK_F9)) {
+  }/* else if (emusdl.key_pressed(SDLK_F9)) {
     int x, y;
     cin >> x;
     cin >> y;
     zx48k::writemem(0x6a9e, x, false);
     zx48k::writemem(0x6a9f, y, false);
-  } else if (emusdl.key_pressed(SDLK_BACKSPACE)) {
+  } */ else if (emusdl.key_pressed(SDLK_BACKSPACE)) {
     keystopress_ =
         std::vector<std::vector<uint8_t>>{{(0 << 3 | 0)},
                                           {(0 << 3 | 0)},
