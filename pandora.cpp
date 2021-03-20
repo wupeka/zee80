@@ -40,6 +40,8 @@ public:
   bool help_screen_ = false;
   bool load_screen_ = false;
   bool save_screen_ = false;
+  bool help_alt_ = false;
+  int help_alt_scroll_ = 0;
   int snap_selected_ = 0;
   uint8_t x_;
   uint8_t y_;
@@ -167,6 +169,75 @@ void pandora::redraw_snap_screen() {
     y+=12;
   } 
 }
+                                                    
+static const std::vector<std::string> licenses =
+    { "","","","","","","","",
+      "      ZEE80 EMULATOR BY wpk        ",
+      "", "", "", "", "", "",
+      "THIS SOFTWARE IS PROVIDED \"AS-IS\"",
+      "WITHOUT ANY EXPRESS OR IMPLIED WAR-",
+      "RANTY. IN NO EVENT WILL THE AUTHORS",
+      "BE HELD LIABLE FOR ANY DAMAGES ARI-",
+      "SING FROM THE USE OF THIS SOFTWARE.",
+      "",
+      "###################################",
+      "",
+      "THIS SOFTWARE CONTAINS ZX SPECTRUM ",
+      "48K ROM. AMSTRAD HAVE KINDLY GIVEN ",
+      "THEIR PERMISSION FOR THE REDISTRI- ",
+      "BUTION OF THEIR COPYRIGHTED MATER- ",
+      "IAL BUT RETAIN THAT COPYRIGHT.     ",
+      "",
+      "###################################",
+      "",
+      "THIS SOFTWARE IS USING SDL2.0 LIB- ",
+      "RARY, LICENSED UNDER ZLIB LICENSE, ",
+      "SEE WWW.LIBSDL.ORG",
+      "",
+      "###################################",
+      "",
+      "THIS SOFTWARE IS USING STSOUND 2.0 ",
+      "LIBRARY WITH THE FOLLOWING LICENSE:",
+      "",
+      "REDISTRIBUTION AND USE IN SOURCE   ",
+      "AND BINARY FORMS, WITH OR WITHOUT  ",
+      "MODIFICATION, ARE PERMITTED PROVI- ",
+      "DED THAT THE FOLLOWING CONDITIONS  ",
+      "ARE MET:",
+      " * REDISTRIBUTIONS OF SOURCE CODE  ",
+      "MUST RETAIN THE ABOVE COPYRIGHT    ",
+      "NOTICE, THIS LIST OF CONDITIONS AND",
+      " THE FOLLOWING DISCLAIMER.",
+      " * REDISTRIBUTIONS IN BINARY FORM  ",
+      "MUST REPRODUCE THE ABOVE COPYRIGHT ",
+      "NOTICE, THIS LIST OF CONDITIONS AND",
+      " THE FOLLOWING DISCLAIMER IN THE   ",
+      "DOCUMENTATION AND/OR OTHER MATER-  ",
+      "IALS PROVIDED WITH THE DISTRIBUTION",
+      "THIS SOFTWARE IS PROVIDED BY THE   ",
+      "COPYRIGHT HOLDERS AND CONTRIBUTORS ",
+      "\"AS IS\" AND ANY EXPRESS OR IM-   ",
+      "PLIED WARRANTIES, INCLUDING, BUT   ",
+      "NOT LIMITED TO, THE IMPLIED WARRAN-",
+      "TIES OF MERCHANTABILITY AND FITNESS",
+      "FOR A PARTICULAR PURPOSE ARE DIS-  ",
+      "CLAIMED. IN NO EVENT SHALL THE CO- ",
+      "PYRIGHT OWNER OR CONTRIBUTORS BE   ",
+      "LIABLE FOR ANY DIRECT, INDIRECT,   ",
+      "INCIDENTAL, SPECIAL, EXEMPLARY, OR ",
+      "CONSEQUENTIAL DAMAGES (INCLUDING,  ",
+      "BUT NOT LIMITED TO, PROCUREMENT OF ",
+      "SUBSTITUTE GOODS OR SERVICES; LOSS ",
+      "OF USE, DATA, OR PROFITS; OR       ",
+      "BUSINESS INTERRUPTION) HOWEVER     ",
+      "CAUSED AND ON ANY THEORY OF LIABI- ",
+      "LITY, WHETHER IN CONTRACT, STRICT  ",
+      "LIABILITY, OR TORT (INCLUDING NEG- ",
+      "LIGENCE OR OTHERWISE) ARISING IN   ",
+      "ANY WAY OUT OF THE USE OF THIS     ",
+      "SOFTWARE, EVEN IF ADVISED OF THE   ",
+      "POSSIBILITY OF SUCH DAMAGE.        "};
+
 
 void pandora::draw_help_screen() {
   uint32_t bg = 0x00CDCDCD;
@@ -184,32 +255,49 @@ void pandora::draw_help_screen() {
   for (int i=0; i<emusdl.get_width() * emusdl.get_height(); i++) {
     emusdl.overlay_[i] = bg;
   }
-                // "                             "
-  spectext_->Write("       PUSZKA PANDORY        ", x, 20, 1, bg, fg);
-  int y = 45;
-  spectext_->Write("    F1 - EKRAN POMOCY        ", x, y, 1, bg, fg);
-  y += 12;
-  spectext_->Write("    F2 - PElNY EKRAN         ", x, y, 1, bg, fg );
-  y += 12;
-  spectext_->Write("    F3 - WYlaCZ TURBOLOAD    ", x, y, 1, bg, fg );
-  y += 12;
-  spectext_->Write("    F4 - WYJDx Z GRY         ", x, y, 1, bg, fg );
-  y += 12;
-  spectext_->Write("    F5 - WYsWIETL MAPe       ", x, y, 1, bg, fg );
-  y += 12;
-  spectext_->Write("    F7 - ZAPISZ GRe          ", x, y, 1, bg, fg );
-  y += 12;
-  spectext_->Write("    F8 - ZAlADUJ GRe         ", x, y, 1, bg, fg );
-  y += 24;
-  spectext_->Write("    PORUSZANIE:  N E S W     ", x, y, 1, bg, fg );
-  y += 12;
-  spectext_->Write("KOMENDY W BEZOKOLICZNIKU, NP:", x, y, 1, bg, fg );
-  y += 12;
-  spectext_->Write(" PlYNac, WZIac, sCIac, WEJsc ", x, y, 1, bg, fg );
-  y += 24;
-  spectext_->Write("    EMULATOR ZEE80: wpk      ", x, y, 1, bg, fg );
-  y += 12;
-  spectext_->Write(helpstring, x, y, 1, bg, fg );
+  if (help_alt_) {
+    int has = help_alt_scroll_ - 100;
+    if (has < 0) { has = 0; };
+    has/=3;
+    int lineToDraw = has/9;
+    if (lineToDraw > licenses.size()) {
+      help_alt_scroll_ = 0;
+      lineToDraw = 0;
+    }
+    int lineOffs = has%9;
+    int y = 15 - lineOffs;
+    while (y < 200 && lineToDraw < licenses.size()) {
+      spectext_->Write(licenses[lineToDraw++].data(), 5, y, 0, bg, fg);
+      y+=9;
+    }
+  } else{
+                  // "                             "
+    spectext_->Write("       PUSZKA PANDORY        ", x, 20, 1, bg, fg);
+    int y = 45;
+    spectext_->Write("    F1 - EKRAN POMOCY        ", x, y, 1, bg, fg);
+    y += 12;
+    spectext_->Write("    F2 - PElNY EKRAN         ", x, y, 1, bg, fg );
+    y += 12;
+    spectext_->Write("    F3 - WYlaCZ TURBOLOAD    ", x, y, 1, bg, fg );
+    y += 12;
+    spectext_->Write("    F4 - WYJDx Z GRY         ", x, y, 1, bg, fg );
+    y += 12;
+    spectext_->Write("    F5 - WYsWIETL MAPe       ", x, y, 1, bg, fg );
+    y += 12;
+    spectext_->Write("    F7 - ZAPISZ GRe          ", x, y, 1, bg, fg );
+    y += 12;
+    spectext_->Write("    F8 - ZAlADUJ GRe         ", x, y, 1, bg, fg );
+    y += 24;
+    spectext_->Write("    PORUSZANIE:  N E S W     ", x, y, 1, bg, fg );
+    y += 12;
+    spectext_->Write("KOMENDY W BEZOKOLICZNIKU, NP:", x, y, 1, bg, fg );
+    y += 12;
+    spectext_->Write(" PlYNac, WZIac, sCIac, WEJsc ", x, y, 1, bg, fg );
+    y += 24;
+    spectext_->Write("    EMULATOR ZEE80: wpk      ", x, y, 1, bg, fg );
+    y += 12;
+    spectext_->Write(helpstring, x, y, 1, bg, fg );
+  }
 }
 
 void pandora::load_snap() {
@@ -226,7 +314,16 @@ void pandora::save_snap() {
 }
 
 bool pandora::processinput() {
+  if (help_alt_ && help_screen_) {
+    help_alt_scroll_ += 1;
+    draw_help_screen();
+  }
   emusdl.readinput();
+  if (emusdl.key_pressed(SDLK_F4)) {
+    cout << "Quitting..." << std::endl;
+    emusdl.fullscreen(false);
+    return false;
+  } 
   if (!emusdl.get_keys().empty() && debounce_ != 0) {
     return true;
   }
@@ -239,9 +336,17 @@ bool pandora::processinput() {
   debounce_ = *emusdl.get_keys().begin();
 
   if (help_screen_) {
-    help_screen_ = false;
-    emusdl.draw_overlay_ = false;
-    return true;
+    if (emusdl.key_pressed(SDLK_F1) && !help_alt_) {
+      help_alt_ = true;
+      help_alt_scroll_ = 0;
+      draw_help_screen();
+      return true;
+    } else {
+      help_alt_ = false;
+      help_screen_ = false;
+      emusdl.draw_overlay_ = false;
+      return true;
+    }
   }
 
   if (load_screen_ || save_screen_) {
@@ -300,10 +405,6 @@ bool pandora::processinput() {
     cin >> y;
     zx48k::writemem(0x6a9e, x, false);
     zx48k::writemem(0x6a9f, y, false);
-  } else if (emusdl.key_pressed(SDLK_F4)) {
-    cout << "Quitting..." << std::endl;
-    emusdl.fullscreen(false);
-    return false;
   } else if (emusdl.key_pressed(SDLK_BACKSPACE)) {
     keystopress_ =
         std::vector<std::vector<uint8_t>>{{(0 << 3 | 0)},
@@ -321,7 +422,9 @@ bool pandora::processinput() {
 pandora *emu;
 int main(int argc, char **argv) {
   SDL_Init(SDL_INIT_EVERYTHING);
+  atexit(SDL_Quit);
   emu = new pandora();
   emu->initialize();
   emu->run();
+  return 0;
 }
