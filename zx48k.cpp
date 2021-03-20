@@ -250,30 +250,30 @@ bool zx48k::processAudio() {
     if (abuf_pos_ == INT_AUDIO_BUF_SIZE) {
       int i;
       double scale = 1;
-      int move = aearbufpos_;
+      int move = INT_AUDIO_BUF_SIZE;
       if (aearbufpos_ < INT_AUDIO_BUF_SIZE) {
         move = aearbufpos_;
         scale = 1.0 * aearbufpos_ / INT_AUDIO_BUF_SIZE;
-        cout << "SCAL " << scale << " " << aearbufpos_ << " " << INT_AUDIO_BUF_SIZE << "\n";
+//        cout << "SCAL " << scale << " " << aearbufpos_ << " " << INT_AUDIO_BUF_SIZE << "\n";
       } else {
-        cout << "NOSCAL " << aearbufpos_ << "\n";
+//        cout << "NOSCAL " << aearbufpos_ << "\n";
       }
+      bool empty = true;
       for (i = 0; i < INT_AUDIO_BUF_SIZE; i++) {
-          
-        // We fill in the blanks with the last value
-//        if ((i < aearbufpos_ ? aearbuf_[i] : aearbuf_[aearbufpos_-1])) {
         if (aearbuf_[(int)(scale * i)]) {
           abuf_[2*i] += 0x3fff;
           abuf_[2*i+1] += 0x3fff;
-        }
+          empty = false;
+        } 
       }
-//      if (aearbufpos_ < INT_AUDIO_BUF_SIZE) {
-//        cout << aearbufpos_ << "\n";
-//      }
-      cout << " Moving " << EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE - move << " from " << move << " to 0 \n";
+//      cout << " Moving " << EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE - move << " from " << move << " to 0 \n";
       memmove(&aearbuf_[0], &aearbuf_[move], EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE - move);
       aearbufpos_ = aearbufpos_ > INT_AUDIO_BUF_SIZE ? aearbufpos_ - INT_AUDIO_BUF_SIZE : 0;
-      cout << "AEARBUFPOS " << aearbufpos_ << "\n";
+      // dirty, dirty trick to keep the buffer sane.
+      if (empty) {
+        aearbufpos_ = 0;
+      }
+//      cout << "AEARBUFPOS " << aearbufpos_ << "\n";
       i = SDL_QueueAudio(sdldev, abuf_, 2 * sizeof(ymsample) * INT_AUDIO_BUF_SIZE);
       if (i != 0) {
         cout << "queue audio error ";
@@ -566,9 +566,9 @@ bool zx48k::do_frame() {
     while (a_diff_ > EARCYCLES) {
       if (aearbufpos_ == EARBUFOFFSET*INT_AUDIO_BUF_SIZE + EARBUFRESERVE) {
         cout << "Too much audio in buffer! " << a_diff_ << " " << aearbufpos_ << " " << EARBUFOFFSET*INT_AUDIO_BUF_SIZE + EARBUFRESERVE << "\n";
-        break;
+        aearbufpos_--;
       }
-      aearbuf_[aearbufpos_++] = ear;
+      aearbuf_[aearbufpos_++] = ear ? 1 : 0;
       a_diff_ -= EARCYCLES;
       processAudio();
     }
@@ -576,6 +576,7 @@ bool zx48k::do_frame() {
     // draw lines that should be drawn now.
     while (v_diff_ > 224) {
       scanline(line++);
+      v_diff_ -= 224;
       if (line >= 312) {
         line = 0;
         if (!processinput()) {
@@ -599,7 +600,6 @@ bool zx48k::do_frame() {
         }
         return true;
       }
-      v_diff_ -= 224;
     }
 
 
