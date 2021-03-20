@@ -22,9 +22,9 @@
 #include <string>
 #include <chrono>
 #define INT_AUDIO_BUF_SIZE 2048
-#define EARBUFOFFSET 2
+#define EARBUFOFFSET 3
 #define EARBUFRESERVE 0
-#define EARCYCLES 79
+#define EARCYCLES 78
 //#define EARCYCLES 80
 class zx48k : public BusHandler { public:
   zx48k();
@@ -40,6 +40,7 @@ class zx48k : public BusHandler { public:
   virtual uint64_t contention(uint64_t address, uint64_t ts) override;
 
 protected:
+  uint64_t earcycles = EARCYCLES;
   bool do_frame();
   EmuSDL emusdl;
   static constexpr int MEMORY_SIZE = 65536;

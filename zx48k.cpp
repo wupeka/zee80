@@ -252,28 +252,22 @@ bool zx48k::processAudio() {
       double scale = 1;
       int move = INT_AUDIO_BUF_SIZE;
       if (aearbufpos_ < INT_AUDIO_BUF_SIZE) {
+        earcycles--;        
         move = aearbufpos_;
         scale = 1.0 * aearbufpos_ / INT_AUDIO_BUF_SIZE;
 //        cout << "SCAL " << scale << " " << aearbufpos_ << " " << INT_AUDIO_BUF_SIZE << "\n";
       } else {
 //        cout << "NOSCAL " << aearbufpos_ << "\n";
       }
-      bool empty = true;
       for (i = 0; i < INT_AUDIO_BUF_SIZE; i++) {
         if (aearbuf_[(int)(scale * i)]) {
           abuf_[2*i] += 0x3fff;
           abuf_[2*i+1] += 0x3fff;
-          empty = false;
         } 
       }
 //      cout << " Moving " << EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE - move << " from " << move << " to 0 \n";
       memmove(&aearbuf_[0], &aearbuf_[move], EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE - move);
       aearbufpos_ = aearbufpos_ > INT_AUDIO_BUF_SIZE ? aearbufpos_ - INT_AUDIO_BUF_SIZE : 0;
-      // dirty, dirty trick to keep the buffer sane.
-      if (empty) {
-        aearbufpos_ = 0;
-      }
-//      cout << "AEARBUFPOS " << aearbufpos_ << "\n";
       i = SDL_QueueAudio(sdldev, abuf_, 2 * sizeof(ymsample) * INT_AUDIO_BUF_SIZE);
       if (i != 0) {
         cout << "queue audio error ";
@@ -538,6 +532,7 @@ uint64_t zx48k::contention(uint64_t addr, uint64_t ts) {
 
 bool zx48k::do_frame() {
   int line = 0;
+  bool raiseec = false;
   for (;;) {
     if (trace_) {
       std::cout << cpu.get_trace();
@@ -562,14 +557,14 @@ bool zx48k::do_frame() {
     v_diff_ += diff;
     d_diff_ += diff;
     a_diff_ += diff;
-
-    while (a_diff_ > EARCYCLES) {
+    while (a_diff_ > earcycles) {
       if (aearbufpos_ == EARBUFOFFSET*INT_AUDIO_BUF_SIZE + EARBUFRESERVE) {
-        cout << "Too much audio in buffer! " << a_diff_ << " " << aearbufpos_ << " " << EARBUFOFFSET*INT_AUDIO_BUF_SIZE + EARBUFRESERVE << "\n";
+        // Too much audio in buffer, backfill and then raise earcycles. Might cause a click
         aearbufpos_--;
+        raiseec = true;
       }
       aearbuf_[aearbufpos_++] = ear ? 1 : 0;
-      a_diff_ -= EARCYCLES;
+      a_diff_ -= earcycles;
       processAudio();
     }
 
@@ -597,6 +592,10 @@ bool zx48k::do_frame() {
           if ((frame_ % 100 == 0) && turbo_) {
             emusdl.redrawscreen();
           }
+        }
+        if (raiseec) {
+          earcycles++;
+          raiseec = false;
         }
         return true;
       }
