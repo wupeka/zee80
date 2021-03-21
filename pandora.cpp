@@ -11,6 +11,7 @@
 #include "spectext.h"
 #include "zx48k.h"
 #include "zx48krom.h"
+#include "platform.h"
 #include <SDL2/SDL_image.h>
 #include <Ym2149Ex.h>
 #include <YmProfiles.h>
@@ -93,7 +94,7 @@ void pandora::upmap() {
 void pandora::initialize() {
   memset(memory_, 0x0f, MEMORY_SIZE);
   memcpy(memory_, zx48k_rom, zx48k_rom_len);
-  pandsnap_ = new Pandsnap("pandora.sav");
+  pandsnap_ = new Pandsnap(getSnapshotFileLocation());
   spectext_ = new SpecText(maszyna_he_bin, emusdl.overlay_, emusdl.get_width(),
                            emusdl.get_height());
   border = 7;
