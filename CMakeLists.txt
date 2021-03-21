@@ -41,13 +41,16 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 find_package(SDL2)
 if (MINGW) 
-	set(SDL2_LIB -lmingw32 SDL2::SDL2main SDL2::SDL2-static)
+	add_library(sdl2image STATIC IMPORTED)
+	set_target_properties(sdl2image PROPERTIES IMPORTED_LOCATION SDL2/lib/libSDL2_image.a)
+	set(SDL2IMAGE_LIBRARIES " SDL2/lib/libSDL2_image.a ")
+	set(SDL2_LIB -lmingw32 SDL2::SDL2main SDL2::SDL2-static sdl2image)
 else()	
 	set(SDL2_LIB -lSDL2 -lSDL2_image)
 endif()
 
 #include(${wxWidgets_USE_FILE})
-set(CMAKE_CXX_FLAGS "-O2 -ggdb -Wall -I. -mtune=native -Wall -std=c++17 -I/usr/local/include -Iwin32/SDL2/include -fsanitize=address")
+set(CMAKE_CXX_FLAGS "-O2 -Wall -I. -Wall -std=c++17 -I/usr/local/include -Iwin32/SDL2/include")
 set(CMAKE_EXE_LINKER_FLAGS "-L/usr/local/lib -static-libgcc -static-libstdc++ ")
 
 add_library (zee80 z80.cpp)
@@ -66,10 +69,10 @@ add_custom_command(TARGET zee80 PRE_BUILD COMMAND cd libstsound && ./configure $
 set_target_properties(stsound PROPERTIES IMPORTED_LOCATION libstsound.a)
 set(STSOUND_LIBRARIES " libstsound.a ")
 set(STSOUND_EXTRA_LINK_FLAG " libstsound.a ")
-set(STSOUND_EXTRA_LINK_FLAG_STATIC " SDL2_EXTRA_LINK_FLAGS_STATIC ")
+
 
 add_executable (zx48k zx48kmain.cpp zx48k.cpp zxtape.cpp emusdl.cpp)
-add_executable (pandora pandora.cpp zx48k.cpp zxtape.cpp emusdl.cpp pandsnap.cpp spectext.cpp)
+add_executable (pandora pandora.cpp zx48k.cpp zxtape.cpp emusdl.cpp pandsnap.cpp spectext.cpp platform.cpp)
 
 add_executable (bigthings bigthings.cpp zx48k.cpp zxtape.cpp emusdl.cpp)
 
