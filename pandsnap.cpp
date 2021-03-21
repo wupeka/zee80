@@ -5,6 +5,7 @@ Pandsnap::Pandsnap(std::string filename) {
   datafile_ = fopen(filename.c_str(), "r+");
   if (datafile_ == NULL) {
     init(filename);
+    return;
   }
   fseek(datafile_, 0, SEEK_END);
   int length = ftell(datafile_);
