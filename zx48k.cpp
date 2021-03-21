@@ -248,11 +248,16 @@ bool zx48k::processAudio() {
     
     abuf_pos_ += samples;
     if (abuf_pos_ == INT_AUDIO_BUF_SIZE) {
+//      cout << "EC " << std::dec << earcycles << " " << earcycles_mini << "\n";
       int i;
       double scale = 1;
       int move = INT_AUDIO_BUF_SIZE;
       if (aearbufpos_ < INT_AUDIO_BUF_SIZE) {
-        earcycles--;        
+        earcycles_mini--;
+        if (earcycles_mini < 0) {
+          earcycles--;
+          earcycles_mini = 9;
+        }        
         move = aearbufpos_;
         scale = 1.0 * aearbufpos_ / INT_AUDIO_BUF_SIZE;
 //        cout << "SCAL " << scale << " " << aearbufpos_ << " " << INT_AUDIO_BUF_SIZE << "\n";
@@ -260,11 +265,25 @@ bool zx48k::processAudio() {
 //        cout << "NOSCAL " << aearbufpos_ << "\n";
       }
       for (i = 0; i < INT_AUDIO_BUF_SIZE; i++) {
-        if (aearbuf_[(int)(scale * i)]) {
-          abuf_[2*i] += 0x3fff;
-          abuf_[2*i+1] += 0x3fff;
-        } 
+        int val = (aearbuf_[(int)(scale * i)]) ? 0xfff : -0xfff;
+        int nval = LPF_BETA * val + (1-LPF_BETA) * aear_lpf_;
+        aear_dcf_ = DCF_BETA * val + (1-DCF_BETA) * aear_dcf_;
+        aear_lpf_ = nval;
+        nval -= aear_dcf_;
+        /*
+          aear_cap_ += 0x0200;
+        } else {
+          aear_cap_ -= 0x0200;
+        }
+        if (aear_cap_ > 0x0fff) {
+          aear_cap_ = 0x0fff;
+        } else if (aear_cap_ < -0x0fff) {
+          aear_cap_ = -0x0fff;
+        } */
+        abuf_[2*i] += nval;
+        abuf_[2*i+1] += nval;
       }
+//      cout << aear_dcf_ << "\n";
 //      cout << " Moving " << EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE - move << " from " << move << " to 0 \n";
       memmove(&aearbuf_[0], &aearbuf_[move], EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE - move);
       aearbufpos_ = aearbufpos_ > INT_AUDIO_BUF_SIZE ? aearbufpos_ - INT_AUDIO_BUF_SIZE : 0;
@@ -302,7 +321,7 @@ void zx48k::writeio(uint16_t address, uint8_t v) {
     ay->writeRegister(ayport, v);
   } else {
     cout << "WRITEIO to unknown port " << std::hex << (int)address << " "
-         << (int)v << "\n";
+         << (int)v << std::dec << "\n";
   }
 }
 
@@ -557,14 +576,23 @@ bool zx48k::do_frame() {
     v_diff_ += diff;
     d_diff_ += diff;
     a_diff_ += diff;
-    while (a_diff_ > earcycles) {
+    int dval = earcycles;
+    if ((rand() % 10) < earcycles_mini) {
+      dval++;
+    }
+    while (a_diff_ > dval) {
+      bool n_ear = ear;
+      if (tape_) {
+        n_ear |= tape_->ear();
+      }
       if (aearbufpos_ == EARBUFOFFSET*INT_AUDIO_BUF_SIZE + EARBUFRESERVE) {
         // Too much audio in buffer, backfill and then raise earcycles. Might cause a click
         aearbufpos_--;
         raiseec = true;
+    //    cout << "raiseec\n";
       }
-      aearbuf_[aearbufpos_++] = ear ? 1 : 0;
-      a_diff_ -= earcycles;
+      aearbuf_[aearbufpos_++] = n_ear ? 1 : 0;
+      a_diff_ -= dval;
       processAudio();
     }
 
@@ -594,7 +622,11 @@ bool zx48k::do_frame() {
           }
         }
         if (raiseec) {
-          earcycles++;
+          earcycles_mini++;
+          if (earcycles_mini > 9) {
+            earcycles++;
+            earcycles_mini=0;
+          }
           raiseec = false;
         }
         return true;
