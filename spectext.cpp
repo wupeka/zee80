@@ -14,7 +14,8 @@ void SpecText::Draw(unsigned char chr, int x, int y, uint32_t bg, uint32_t fg) {
   }
 }
 
-void SpecText::Write(const char *str, int x, int y, int d, uint32_t bg, uint32_t fg) {
+void SpecText::Write(const char *str, int x, int y, int d, uint32_t bg,
+                     uint32_t fg) {
   while (str[0] != '\0') {
     Draw(str[0], x, y, bg, fg);
     str++;

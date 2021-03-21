@@ -6,11 +6,11 @@
  */
 #include "zxtape.h"
 #include "z80.h"
+#include <cassert>
 #include <fstream>
 #include <iostream>
 #include <memory.h>
 #include <memory>
-#include <cassert>
 
 using namespace std;
 
@@ -41,17 +41,17 @@ zxtape::zxtape(string filename) {
 zxtape::zxtape(unsigned char *data, unsigned int len) {
   unsigned int pos = 0;
   while (pos < len) {
-    uint16_t blen = *(uint16_t*) (&data[pos]);
-    pos+=2;
+    uint16_t blen = *(uint16_t *)(&data[pos]);
+    pos += 2;
     assert(pos + blen <= len);
-    this->blocks_.push_back(std::make_unique<zxtapeblock>((char *)&data[pos], blen));
+    this->blocks_.push_back(
+        std::make_unique<zxtapeblock>((char *)&data[pos], blen));
     pos += blen;
   }
   reset();
 }
 
-
-size_t zxtape::trapload(z80& cpu) {
+size_t zxtape::trapload(z80 &cpu) {
   cout << "Traploading " << block_ << "\n";
   if (state_ != PAUSE) {
     return 0;
@@ -69,8 +69,7 @@ size_t zxtape::trapload(z80& cpu) {
   }
 }
 
-
-bool zxtapeblock::trapload(z80& cpu) {
+bool zxtapeblock::trapload(z80 &cpu) {
   struct z80_regs r = cpu.get_regs();
   bool verify = !(r.fp & cpu.fC);
   uint8_t parity = buf_[0];
@@ -82,23 +81,25 @@ bool zxtapeblock::trapload(z80& cpu) {
   r.ap = 0x01;
   r.fp = 0x45;
   r.bc = 0xb001;
-    
-  for (unsigned i = 1; i < len_-1; i++) {
-      parity ^= buf_[i];
-      cpu.bh.writemem(r.ix+i-1, buf_[i]);
+
+  for (unsigned i = 1; i < len_ - 1; i++) {
+    parity ^= buf_[i];
+    cpu.bh.writemem(r.ix + i - 1, buf_[i]);
   }
-  parity ^= buf_[len_-1];
-  r.hl = (parity << 8) | buf_[len_-1];
+  parity ^= buf_[len_ - 1];
+  r.hl = (parity << 8) | buf_[len_ - 1];
   r.ix += r.de;
   r.de = 0;
   r.a = parity;
 
-  
-// 0000000010307875 PC=05e2 A=00 F=42 F=01000010 I=3f IFF=00 IM=1 BC=b001 DE=0000 HL=fffe AF'=0145 BC'=1721 DE'=369b HL'=bebe IX=5cf3 IY=5c3a SP=ff4a (SP)=3f057107 OPC=c9cde705
-// 0000000030869693 PC=05e2 A=00 F=93 F=10010011 I=3f IFF=00 IM=1 BC=b07e DE=0000 HL=00fe AF'=7e6d BC'=1721 DE'=369b HL'=bebe IX=5cf3 IY=5c3a SP=ff4a (SP)=3f057107 OPC=c9cde705
-  
+  // 0000000010307875 PC=05e2 A=00 F=42 F=01000010 I=3f IFF=00 IM=1 BC=b001
+  // DE=0000 HL=fffe AF'=0145 BC'=1721 DE'=369b HL'=bebe IX=5cf3 IY=5c3a SP=ff4a
+  // (SP)=3f057107 OPC=c9cde705 0000000030869693 PC=05e2 A=00 F=93 F=10010011
+  // I=3f IFF=00 IM=1 BC=b07e DE=0000 HL=00fe AF'=7e6d BC'=1721 DE'=369b
+  // HL'=bebe IX=5cf3 IY=5c3a SP=ff4a (SP)=3f057107 OPC=c9cde705
+
   cpu.set_regs(r);
-// it modifies flags, need to do it after set_regs
+  // it modifies flags, need to do it after set_regs
   cpu.i_sub8(r.a, 1, false);
   return true;
 }
@@ -123,7 +124,10 @@ void zxtape::reset(unsigned int block) {
   blocks_[block_]->reset();
 }
 
-void zxtape::go(bool singleblock) { singleblock_ = singleblock; state_ = RUNNING; }
+void zxtape::go(bool singleblock) {
+  singleblock_ = singleblock;
+  state_ = RUNNING;
+}
 
 bool zxtapeblock::bit() { return buf_[(pos_ / 8)] & (1 << (7 - (pos_ % 8))); }
 

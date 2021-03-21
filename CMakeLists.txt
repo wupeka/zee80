@@ -47,7 +47,7 @@ else()
 endif()
 
 #include(${wxWidgets_USE_FILE})
-set(CMAKE_CXX_FLAGS "-O2 -ggdb -Wall -I. -mtune=native -Wall -std=c++17 -I/usr/local/include -Iwin32/SDL2/include")
+set(CMAKE_CXX_FLAGS "-O2 -ggdb -Wall -I. -mtune=native -Wall -std=c++17 -I/usr/local/include -Iwin32/SDL2/include -fsanitize=address")
 set(CMAKE_EXE_LINKER_FLAGS "-L/usr/local/lib -static-libgcc -static-libstdc++ ")
 
 add_library (zee80 z80.cpp)

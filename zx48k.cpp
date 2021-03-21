@@ -10,26 +10,27 @@
 #include <YmProfiles.h>
 //#include <boost/program_options.hpp>
 #include <cassert>
+#include <chrono>
 #include <ctime>
 #include <fstream>
 #include <iostream>
 #include <strings.h>
-#include <chrono>
 
 using namespace std;
-//namespace po = boost::program_options;
+// namespace po = boost::program_options;
 
 constexpr int zx48k::MEMORY_SIZE;
 
 namespace {
-// Those are 'proper' values for ZX screen, we trim the borders a bit to make it nicer
-//constexpr int COLS = 352;
-//constexpr int LINES = 296;
-//constexpr int TOP_SKIP_LINES = 0;
-//constexpr int TOP_BORDER_LINES = 48;
-//constexpr int BOTTOM_BORDER_LINES = 56;
-//constexpr int LEFT_BORDER_COLS = 48;
-//constexpr int RIGHT_BORDER_COLS = 48;
+// Those are 'proper' values for ZX screen, we trim the borders a bit to make it
+// nicer
+// constexpr int COLS = 352;
+// constexpr int LINES = 296;
+// constexpr int TOP_SKIP_LINES = 0;
+// constexpr int TOP_BORDER_LINES = 48;
+// constexpr int BOTTOM_BORDER_LINES = 56;
+// constexpr int LEFT_BORDER_COLS = 48;
+// constexpr int RIGHT_BORDER_COLS = 48;
 constexpr int COLS = 288;
 constexpr int LINES = 224;
 constexpr int TOP_SKIP_LINES = 32;
@@ -90,9 +91,7 @@ void zx48k::initialize() {
   }
 }
 
-static void help() {
-  exit(1);
-}
+static void help() { exit(1); }
 
 void zx48k::parse_opts(int argc, char **argv) {
   for (int i = 1; i < argc; i++) {
@@ -122,16 +121,17 @@ void zx48k::parse_opts(int argc, char **argv) {
     }
   }
 }
-      
+
 uint32_t zx48k::readmem(uint16_t address, bool dotrace) {
   if ((trace_ && dotrace)) {
     cout << "READMEM " << std::hex << (int)address << " "
          << (int)(memory_[address] & 0xff) << endl;
   }
-  
+
   // return *((uint32_t *)(memory_ + address));
   return memory_[address] + (memory_[(address + 1) & 0xffff] << 8) +
-         (memory_[(address + 2)&0xffff] << 16) + (memory_[(address + 3)&0xffff] << 24);
+         (memory_[(address + 2) & 0xffff] << 16) +
+         (memory_[(address + 3) & 0xffff] << 24);
 }
 
 void zx48k::writemem(uint16_t address, uint8_t v, bool dotrace) {
@@ -225,9 +225,9 @@ static uint8_t sdlkey2spectrum(SDL_Keycode k) {
     return 7 << 3 | 3;
   case SDLK_b:
     return 7 << 3 | 4;
-    
-//  case SDLK_BACKSPACE: // shift + 0
-//    return (0 << 3 | 0) | (;
+
+    //  case SDLK_BACKSPACE: // shift + 0
+    //    return (0 << 3 | 0) | (;
 
   default:
     return 0xff;
@@ -244,11 +244,12 @@ bool zx48k::processAudio() {
     }
     uint64_t proc_ns = (samples * NSEC_PER_SEC) / 44100;
     lastAyWrite += std::chrono::nanoseconds(proc_ns);
-    ay->updateStereo(&abuf_[2*abuf_pos_], samples);
-    
+    ay->updateStereo(&abuf_[2 * abuf_pos_], samples);
+
     abuf_pos_ += samples;
     if (abuf_pos_ == INT_AUDIO_BUF_SIZE) {
-//      cout << "EC " << std::dec << earcycles << " " << earcycles_mini << "\n";
+      //      cout << "EC " << std::dec << earcycles << " " << earcycles_mini <<
+      //      "\n";
       int i;
       double scale = 1;
       int move = INT_AUDIO_BUF_SIZE;
@@ -257,17 +258,18 @@ bool zx48k::processAudio() {
         if (earcycles_mini < 0) {
           earcycles--;
           earcycles_mini = 9;
-        }        
+        }
         move = aearbufpos_;
         scale = 1.0 * aearbufpos_ / INT_AUDIO_BUF_SIZE;
-//        cout << "SCAL " << scale << " " << aearbufpos_ << " " << INT_AUDIO_BUF_SIZE << "\n";
+        //        cout << "SCAL " << scale << " " << aearbufpos_ << " " <<
+        //        INT_AUDIO_BUF_SIZE << "\n";
       } else {
-//        cout << "NOSCAL " << aearbufpos_ << "\n";
+        //        cout << "NOSCAL " << aearbufpos_ << "\n";
       }
       for (i = 0; i < INT_AUDIO_BUF_SIZE; i++) {
         int val = (aearbuf_[(int)(scale * i)]) ? 0xfff : -0xfff;
-        int nval = LPF_BETA * val + (1-LPF_BETA) * aear_lpf_;
-        aear_dcf_ = DCF_BETA * val + (1-DCF_BETA) * aear_dcf_;
+        int nval = LPF_BETA * val + (1 - LPF_BETA) * aear_lpf_;
+        aear_dcf_ = DCF_BETA * val + (1 - DCF_BETA) * aear_dcf_;
         aear_lpf_ = nval;
         nval -= aear_dcf_;
         /*
@@ -280,14 +282,20 @@ bool zx48k::processAudio() {
         } else if (aear_cap_ < -0x0fff) {
           aear_cap_ = -0x0fff;
         } */
-        abuf_[2*i] += nval;
-        abuf_[2*i+1] += nval;
+        abuf_[2 * i] += nval;
+        abuf_[2 * i + 1] += nval;
       }
-//      cout << aear_dcf_ << "\n";
-//      cout << " Moving " << EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE - move << " from " << move << " to 0 \n";
-      memmove(&aearbuf_[0], &aearbuf_[move], EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE - move);
-      aearbufpos_ = aearbufpos_ > INT_AUDIO_BUF_SIZE ? aearbufpos_ - INT_AUDIO_BUF_SIZE : 0;
-      i = SDL_QueueAudio(sdldev, abuf_, 2 * sizeof(ymsample) * INT_AUDIO_BUF_SIZE);
+      //      cout << aear_dcf_ << "\n";
+      //      cout << " Moving " <<
+      //      EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE - move << " from "
+      //      << move << " to 0 \n";
+      memmove(&aearbuf_[0], &aearbuf_[move],
+              EARBUFOFFSET * INT_AUDIO_BUF_SIZE + EARBUFRESERVE - move);
+      aearbufpos_ = aearbufpos_ > INT_AUDIO_BUF_SIZE
+                        ? aearbufpos_ - INT_AUDIO_BUF_SIZE
+                        : 0;
+      i = SDL_QueueAudio(sdldev, abuf_,
+                         2 * sizeof(ymsample) * INT_AUDIO_BUF_SIZE);
       if (i != 0) {
         cout << "queue audio error ";
         cout << SDL_GetError();
@@ -305,10 +313,10 @@ void zx48k::writeio(uint16_t address, uint8_t v) {
     bool n_ear = v & 0x10;
     bool n_mic = v & 0x08;
     if (ear != n_ear) {
-//      uint64_t proc_time = cpucycles_ - lastEarChange;
-//      cout << "es change " << ear << " " << proc_time << " " << earStates.size() << endl;
-//      earStates.push_back(std::make_pair(ear, (proc_time * 285)));
-//      lastEarChange = cpucycles_;
+      //      uint64_t proc_time = cpucycles_ - lastEarChange;
+      //      cout << "es change " << ear << " " << proc_time << " " <<
+      //      earStates.size() << endl; earStates.push_back(std::make_pair(ear,
+      //      (proc_time * 285))); lastEarChange = cpucycles_;
     }
     ear = n_ear;
     mic = n_mic;
@@ -331,7 +339,8 @@ uint8_t zx48k::readio(uint16_t address) {
     out = 0xbf;
     uint8_t lines = ~(address >> 8);
     if (!keystopress_.empty()) {
-      if (keypressedtime_ != 0 && keypressedtime_ + keypresstime_ < cpucycles_) {
+      if (keypressedtime_ != 0 &&
+          keypressedtime_ + keypresstime_ < cpucycles_) {
         keystopress_.erase(keystopress_.begin());
         keypressedtime_ = 0;
         // continue, wait for the next round
@@ -340,7 +349,7 @@ uint8_t zx48k::readio(uint16_t address) {
           keypressedtime_ = cpucycles_;
         }
         auto keys = keystopress_.front();
-        for (uint8_t key: keys) {
+        for (uint8_t key : keys) {
           uint8_t kline = 1 << (key >> 3);
           uint8_t kaddr = 1 << (key & 0b111);
           if (kline & lines) {
@@ -349,7 +358,7 @@ uint8_t zx48k::readio(uint16_t address) {
         }
       }
     }
-    
+
     for (auto sdlkey : emusdl.get_keys()) {
       uint8_t key = sdlkey2spectrum(sdlkey);
       if (key != 0xff) {
@@ -370,10 +379,9 @@ uint8_t zx48k::readio(uint16_t address) {
       }
       if (ear != n_ear) {
         ear = n_ear;
-//        uint64_t proc_time = cpucycles_ - lastEarChange;
-//       earStates.push_back(std::make_pair(n_ear, (proc_time * 285)));
-//        lastEarChange = cpucycles_;
-        
+        //        uint64_t proc_time = cpucycles_ - lastEarChange;
+        //       earStates.push_back(std::make_pair(n_ear, (proc_time * 285)));
+        //        lastEarChange = cpucycles_;
       }
     }
 
@@ -386,7 +394,8 @@ uint8_t zx48k::readio(uint16_t address) {
 }
 
 void zx48k::scanline(int y) {
-  if (y < TOP_SKIP_LINES || y >= LINES + TOP_SKIP_LINES) { // 16 empty scanlines at the end
+  if (y < TOP_SKIP_LINES ||
+      y >= LINES + TOP_SKIP_LINES) { // 16 empty scanlines at the end
     return;
   }
   y -= TOP_SKIP_LINES;
@@ -465,13 +474,22 @@ bool zx48k::trap(uint16_t pc) {
       return didtrap_;
     } else if (tape_) {
       tape_->go(true);
-    }	
+    }
     didtrap_ = false;
     return false;
   } else if (pc == 0x15e1 && auto_) {
     if (autoload_delay_++ > 3000) {
       auto_ = false;
-      keystopress_ = std::vector<std::vector<uint8_t > > { { (6<<3|3)}, {}, {(7<<3|1)}, {(7<<3|1), (5 << 3 | 0)}, {}, {(7<<3|1)}, {(7<<3|1), (5 << 3 | 0)}, {}, {(6 << 3 | 0)} };
+      keystopress_ =
+          std::vector<std::vector<uint8_t>>{{(6 << 3 | 3)},
+                                            {},
+                                            {(7 << 3 | 1)},
+                                            {(7 << 3 | 1), (5 << 3 | 0)},
+                                            {},
+                                            {(7 << 3 | 1)},
+                                            {(7 << 3 | 1), (5 << 3 | 0)},
+                                            {},
+                                            {(6 << 3 | 0)}};
       autoload_delay_ = 0;
     }
     return false;
@@ -482,7 +500,7 @@ bool zx48k::trap(uint16_t pc) {
 bool zx48k::processinput() {
   emusdl.readinput();
   if (emusdl.key_pressed(SDLK_F5)) {
-          trace_ = true;
+    trace_ = true;
   } else if (emusdl.key_pressed(SDLK_F6)) {
     trace_ = false;
   } else if (emusdl.key_pressed(SDLK_F9)) {
@@ -500,8 +518,7 @@ bool zx48k::processinput() {
     if (debounce_ != SDLK_F8) {
       turbo_ = !turbo_;
       debounce_ = SDLK_F8;
-      cout << string("Turbo mode ") << (turbo_ ? "on" : "off")
-           << std::endl;
+      cout << string("Turbo mode ") << (turbo_ ? "on" : "off") << std::endl;
     }
   } else if (emusdl.key_pressed(SDLK_F4)) {
     cout << "Quitting..." << std::endl;
@@ -522,13 +539,15 @@ void zx48k::run() {
 }
 
 uint64_t zx48k::contention(uint64_t addr, uint64_t ts) {
- // 14335	6 (until 14341)
- // This pattern (6,5,4,3,2,1,0,0) continues until 14463 tstates after interrupt, at which point there is
- // no delay for 96 tstates while the border and horizontal refresh are drawn. The pattern starts again at
- // 14559 tstates and continues for all 192 lines of screen data. After this, there is no delay until the
- // end of the frame as the bottom border and vertical refresh happen, and no delay until 14335 tstates
- // after the start of the next frame as the top border is drawn.
-  if (addr <  0x4000 || addr > 0x7fff) {
+  // 14335	6 (until 14341)
+  // This pattern (6,5,4,3,2,1,0,0) continues until 14463 tstates after
+  // interrupt, at which point there is no delay for 96 tstates while the border
+  // and horizontal refresh are drawn. The pattern starts again at 14559 tstates
+  // and continues for all 192 lines of screen data. After this, there is no
+  // delay until the end of the frame as the bottom border and vertical refresh
+  // happen, and no delay until 14335 tstates after the start of the next frame
+  // as the top border is drawn.
+  if (addr < 0x4000 || addr > 0x7fff) {
     return 0;
   }
   if (ts < 14335 || ts > 57343) {
@@ -548,7 +567,6 @@ uint64_t zx48k::contention(uint64_t addr, uint64_t ts) {
   }
 }
 
-
 bool zx48k::do_frame() {
   int line = 0;
   bool raiseec = false;
@@ -561,7 +579,7 @@ bool zx48k::do_frame() {
     if (pausecycles_ > 0) {
       diff = 12;
       if ((pausecycles_ % 500) == 0) {
-         border = (pausecycles_ % 1000) ? 1 : 6;
+        border = (pausecycles_ % 1000) ? 1 : 6;
       }
       pausecycles_--;
     } else {
@@ -585,11 +603,12 @@ bool zx48k::do_frame() {
       if (tape_) {
         n_ear |= tape_->ear();
       }
-      if (aearbufpos_ == EARBUFOFFSET*INT_AUDIO_BUF_SIZE + EARBUFRESERVE) {
-        // Too much audio in buffer, backfill and then raise earcycles. Might cause a click
+      if (aearbufpos_ == EARBUFOFFSET * INT_AUDIO_BUF_SIZE + EARBUFRESERVE) {
+        // Too much audio in buffer, backfill and then raise earcycles. Might
+        // cause a click
         aearbufpos_--;
         raiseec = true;
-    //    cout << "raiseec\n";
+        //    cout << "raiseec\n";
       }
       aearbuf_[aearbufpos_++] = n_ear ? 1 : 0;
       a_diff_ -= dval;
@@ -609,7 +628,7 @@ bool zx48k::do_frame() {
           SDL_PauseAudioDevice(sdldev, 0);
         }
 
-        if (pausecycles_ == 0)  {
+        if (pausecycles_ == 0) {
           cpu.interrupt(0xff);
         }
         if (!turbo_) {
@@ -625,7 +644,7 @@ bool zx48k::do_frame() {
           earcycles_mini++;
           if (earcycles_mini > 9) {
             earcycles++;
-            earcycles_mini=0;
+            earcycles_mini = 0;
           }
           raiseec = false;
         }
@@ -633,11 +652,10 @@ bool zx48k::do_frame() {
       }
     }
 
-
     // correct timing:
     // 'd_diff_' cycles should take us d_diff_ * 285ns, if we're too late - too
-    // bad if we're too soon - wait do it only if d_diff_ > 10000 to save time on
-    // unnecessary clock_gettimes
+    // bad if we're too soon - wait do it only if d_diff_ > 10000 to save time
+    // on unnecessary clock_gettimes
     // TODO move it into emusdl
     if (d_diff_ > 100) {
       tv_e_ = std::chrono::steady_clock::now();
@@ -664,4 +682,3 @@ bool zx48k::do_frame() {
     }
   }
 }
-

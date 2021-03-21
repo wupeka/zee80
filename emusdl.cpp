@@ -9,8 +9,8 @@
 #include <cassert>
 #include <iostream>
 
-EmuSDL::EmuSDL(int w, int h, int hscale, int wscale, const char * name)
-    : w(w), h(h),  hscale(hscale), wscale(wscale) {
+EmuSDL::EmuSDL(int w, int h, int hscale, int wscale, const char *name)
+    : w(w), h(h), hscale(hscale), wscale(wscale) {
   // TODO Auto-generated constructor stub
   window = SDL_CreateWindow(name, SDL_WINDOWPOS_UNDEFINED,
                             SDL_WINDOWPOS_UNDEFINED, wscale * w, hscale * h,
@@ -21,8 +21,8 @@ EmuSDL::EmuSDL(int w, int h, int hscale, int wscale, const char * name)
   }
   renderer = SDL_CreateRenderer(window, -1, 0);
   assert(renderer != NULL);
-//  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,
-//              "linear"); // make the scaled rendering look smoother.
+  //  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,
+  //              "linear"); // make the scaled rendering look smoother.
   SDL_RenderSetLogicalSize(renderer, wscale * w, hscale * h);
   texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
                               SDL_TEXTUREACCESS_STREAMING, w, h);
@@ -37,21 +37,20 @@ EmuSDL::~EmuSDL() {
   SDL_Quit();
 }
 
-void EmuSDL::settitle(const char *title) {
-  SDL_SetWindowTitle(window, title);
-}
+void EmuSDL::settitle(const char *title) { SDL_SetWindowTitle(window, title); }
 
 void EmuSDL::redrawscreen() {
   SDL_UpdateTexture(texture, NULL, pixels, w * sizeof(uint32_t));
   // We set the background to the border color - first pixel of the screen
   uint32_t p = pixels[0];
-  SDL_SetRenderDrawColor(renderer, (p >> 16) & 0xff, (p >> 8) & 0xff, (p)&0xff, 255);
+  SDL_SetRenderDrawColor(renderer, (p >> 16) & 0xff, (p >> 8) & 0xff, (p)&0xff,
+                         255);
   SDL_RenderClear(renderer);
   SDL_RenderCopy(renderer, texture, NULL, NULL);
-    SDL_UpdateTexture(texture, NULL, overlay_, w * sizeof(uint32_t));
+  SDL_UpdateTexture(texture, NULL, overlay_, w * sizeof(uint32_t));
   if (draw_overlay_) {
     SDL_RenderCopy(renderer, texture, NULL, NULL);
-  }    
+  }
   SDL_RenderPresent(renderer);
 }
 
@@ -67,13 +66,14 @@ void EmuSDL::readinput() {
       keys.erase(event.key.keysym.sym);
       break;
     case SDL_MOUSEBUTTONDOWN:
-    // ry = 25 * (40 - y_)
-    // 
-      std::cout << event.button.x/25 + 1 << " " << 40 - (event.button.y/25) << std::endl;
+      // ry = 25 * (40 - y_)
+      //
+      std::cout << event.button.x / 25 + 1 << " " << 40 - (event.button.y / 25)
+                << std::endl;
       break;
     case SDL_QUIT:
       keys.insert(SDLK_F4);
-      break; 
+      break;
     default:
       break;
     }
@@ -87,9 +87,7 @@ void EmuSDL::readinput() {
   }
 }
 
-void EmuSDL::waitevent() {
-  SDL_WaitEvent(NULL);
-}
+void EmuSDL::waitevent() { SDL_WaitEvent(NULL); }
 void EmuSDL::fullscreen(bool fs) {
   SDL_SetWindowFullscreen(window, fs ? SDL_WINDOW_FULLSCREEN : 0);
 }

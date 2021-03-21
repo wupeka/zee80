@@ -18,9 +18,9 @@
 #endif
 
 #include <Ym2149Ex.h>
+#include <chrono>
 #include <set>
 #include <string>
-#include <chrono>
 #define INT_AUDIO_BUF_SIZE 2048
 #define EARBUFOFFSET 2
 #define EARBUFRESERVE 0
@@ -28,7 +28,8 @@
 #define DCF_BETA 0.001
 //#define EARCYCLES 79
 //#define EARCYCLES 80
-class zx48k : public BusHandler { public:
+class zx48k : public BusHandler {
+public:
   zx48k();
   void parse_opts(int argc, char **argv);
   void initialize();
@@ -48,8 +49,8 @@ protected:
   EmuSDL emusdl;
   static constexpr int MEMORY_SIZE = 65536;
   z80 cpu;
-  ymsample abuf_[2*INT_AUDIO_BUF_SIZE];
-  char aearbuf_[EARBUFOFFSET*INT_AUDIO_BUF_SIZE+EARBUFRESERVE];
+  ymsample abuf_[2 * INT_AUDIO_BUF_SIZE];
+  char aearbuf_[EARBUFOFFSET * INT_AUDIO_BUF_SIZE + EARBUFRESERVE];
   int aear_lpf_ = 0;
   int aear_dcf_ = 0;
   int aearbufpos_ = 0;
@@ -64,10 +65,10 @@ protected:
 
   void scanline(int y);
   void dump();
-  
+
   SDL_Keycode debounce_;
   virtual bool processinput();
-  
+
   std::string romfile;
   std::string tapfile;
   zxtape *tape_ = NULL;
@@ -90,7 +91,7 @@ protected:
   bool quickload_ = true;
   bool auto_ = false;
   int autoload_delay_ = 0;
-  std::vector<std::vector<uint8_t >> keystopress_;
+  std::vector<std::vector<uint8_t>> keystopress_;
   uint64_t keypressedtime_ = 0;
   static constexpr uint64_t keypresstime_ = 100000; // ~20ms
   bool turbo_ = false;
@@ -105,7 +106,6 @@ protected:
   std::chrono::steady_clock::time_point tv_s_, tv_e_;
 
   uint64_t pausecycles_;
-
 };
 
 #endif /* ZX48K_H_ */

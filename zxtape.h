@@ -7,23 +7,24 @@
 
 #ifndef ZXTAPE_H_
 #define ZXTAPE_H_
+#include "z80.h"
 #include <fstream>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
-#include "z80.h"
 
 class zxtapeblock {
 public:
-  zxtapeblock(char * data, size_t len);
+  zxtapeblock(char *data, size_t len);
   ~zxtapeblock();
   void reset();
   bool tick(uint32_t diff);
   bool const ear();
-  bool trapload(z80& cpu);
+  bool trapload(z80 &cpu);
   size_t len() { return len_; };
+
 private:
-  zxtapeblock(const zxtapeblock&);
+  zxtapeblock(const zxtapeblock &);
   enum { LEADIN, PILOT, SYNC, DATA, LEADOUT } blockstate_;
   void flip();
   bool bit();
@@ -42,12 +43,12 @@ public:
   void go(bool singleblock = false);
   bool update_ticks(uint32_t diff);
   bool const ear();
-  size_t trapload(z80& cpu);
+  size_t trapload(z80 &cpu);
   void reset(unsigned int block = 0);
-  
+
 private:
   enum { PAUSE, RUNNING, END } state_ = PAUSE;
-  std::vector<std::unique_ptr<zxtapeblock> > blocks_;
+  std::vector<std::unique_ptr<zxtapeblock>> blocks_;
   unsigned block_;
   bool singleblock_;
 };

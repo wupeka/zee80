@@ -111,7 +111,6 @@ struct z80_regs z80::get_regs() {
 
 void z80::set_regs(struct z80_regs regs) { R = regs; }
 
-
 uint32_t z80::readmem(uint16_t addr) {
   uint64_t ts = cycles - last_intr;
   cycles += bh.contention(addr, ts);
@@ -124,8 +123,6 @@ void z80::writemem(uint16_t addr, uint8_t value) {
   bh.writemem(addr, value);
 }
 
-
-  
 uint64_t z80::tick() {
   if (in_halt) {
     cycles += 4;
@@ -179,7 +176,8 @@ char *z80::get_trace() {
 void z80::addtrap(uint16_t addr) { traps.push_back(addr); }
 
 bool z80::interrupt(uint8_t data) {
-//  std::cout << "INTR " << (int) data << " R.iff1 " << (int)R.iff1 << " R.imode " << (int)R.imode << std::endl;
+  //  std::cout << "INTR " << (int) data << " R.iff1 " << (int)R.iff1 << "
+  //  R.imode " << (int)R.imode << std::endl;
   if (R.iff1) {
     last_intr = cycles;
     // push R.pc

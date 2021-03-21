@@ -22,8 +22,9 @@ public:
 
 public:
   typedef std::set<SDL_Keycode> keys_t;
-  EmuSDL(int w, int h, int hscale = 2, int wscale = 2, const char *name="EmuSDL");
-  void settitle(const char* name);
+  EmuSDL(int w, int h, int hscale = 2, int wscale = 2,
+         const char *name = "EmuSDL");
+  void settitle(const char *name);
   void redrawscreen();
   void readinput();
   void waitevent();

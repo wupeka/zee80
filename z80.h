@@ -78,9 +78,8 @@ public:
   static const uint8_t fN = 1 << 1;
   static const uint8_t fC = 1;
 
-// public for traploader
+  // public for traploader
   uint8_t i_sub8(uint8_t a, uint8_t b, bool carry);
-
 
 private:
   std::vector<uint16_t> traps;
@@ -96,7 +95,7 @@ private:
   // used for every tick
   uint64_t cycles = 0; // number of cycles taken
   uint64_t last_intr = 0;
-  uint8_t instr;       // current instruction
+  uint8_t instr;   // current instruction
   uint32_t instrv; // current instruction + 3 next bytes, volatile so make sure
                    // it won't get optimized
   // ei works after the next instruction, sets this flag
@@ -178,8 +177,8 @@ private:
   void i_setf358(uint8_t v);
   void i_setfP8(uint8_t v);
   uint8_t i_add8(uint8_t a, uint8_t b, bool carry);
-// public for traploader
-// uint8_t i_sub8(uint8_t a, uint8_t b, bool carry);
+  // public for traploader
+  // uint8_t i_sub8(uint8_t a, uint8_t b, bool carry);
   uint8_t i_and8(uint8_t a, uint8_t b);
   uint8_t i_xor8(uint8_t a, uint8_t b);
   uint8_t i_or8(uint8_t a, uint8_t b);

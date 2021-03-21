@@ -5,7 +5,9 @@
  *      Author: wpk
  */
 
+#include "bigthings.h"
 #include "zx48k.h"
+#include "zx48krom.h"
 #include <Ym2149Ex.h>
 #include <YmProfiles.h>
 #include <cassert>
@@ -13,8 +15,6 @@
 #include <fstream>
 #include <iostream>
 #include <strings.h>
-#include "zx48krom.h"
-#include "bigthings.h"
 
 using namespace std;
 
@@ -37,9 +37,7 @@ void bigthings::initialize() {
   emusdl.settitle("BigThings");
 }
 
-bigthings::bigthings()
-{
-}
+bigthings::bigthings() {}
 
 bool bigthings::processinput() {
   emusdl.readinput();
