@@ -621,8 +621,12 @@ bool zx48k::do_frame() {
 
       if (acc_delay_ > 10000000) {
         uint64_t c = acc_delay_ / 1000000;
-        acc_delay_ -= c * 1000000;
+        std::chrono::steady_clock::time_point start, end;
+        start = std::chrono::steady_clock::now();
         SDL_Delay(c);
+        end = std::chrono::steady_clock::now();
+        int64_t passed = std::chrono::nanoseconds(end - start).count();
+        acc_delay_ -= passed;
       }
       tv_s_ = std::chrono::steady_clock::now();
     }
