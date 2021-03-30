@@ -45,8 +45,14 @@ if (MINGW)
 	set_target_properties(sdl2image PROPERTIES IMPORTED_LOCATION SDL2/lib/libSDL2_image.a)
 	set(SDL2IMAGE_LIBRARIES " SDL2/lib/libSDL2_image.a ")
 	set(SDL2_LIB -lmingw32 SDL2::SDL2main SDL2::SDL2-static sdl2image)
+
+	add_library(windres STATIC IMPORTED)
+	add_custom_command(TARGET windres PRE_BUILD COMMAND i686-w64-mingw32-windres -v  -i ../pandora.rc -O coff -o pandora.res)
+	set_target_properties(windres PROPERTIES IMPORTED_LOCATION pandora.res)
+	set(WINDRES_LIBRARIES " pandora.res ")
 else()	
 	set(SDL2_LIB -lSDL2 -lSDL2_image)
+	set(WINDRES_LIBRARIES " ")
 endif()
 
 #include(${wxWidgets_USE_FILE})
@@ -76,7 +82,11 @@ add_executable (pandora pandora.cpp zx48k.cpp zxtape.cpp emusdl.cpp pandsnap.cpp
 
 add_executable (bigthings bigthings.cpp zx48k.cpp zxtape.cpp emusdl.cpp)
 
-target_link_libraries (pandora LINK_PUBLIC zee80 ${SDL2_LIB} stsound)
+if (MINGW)
+	target_link_libraries (pandora LINK_PUBLIC zee80 ${SDL2_LIB} stsound windres)
+else()
+	target_link_libraries (pandora LINK_PUBLIC zee80 ${SDL2_LIB} stsound)
+endif()
 target_link_libraries (bigthings LINK_PUBLIC zee80 ${SDL2_LIB} stsound)
 target_link_libraries (zx48k LINK_PUBLIC zee80 ${SDL2_LIB} stsound)
 
