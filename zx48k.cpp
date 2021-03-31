@@ -662,9 +662,9 @@ bool zx48k::do_frame() {
 
       acc_delay_ += handl_time - real_time;
 
-//      if (acc_delay_ < 0 || turbo_) {
-//        acc_delay_ = 0;
-//      }
+      //      if (acc_delay_ < 0 || turbo_) {
+      //        acc_delay_ = 0;
+      //      }
 
       if (acc_delay_ > 10000000) {
         uint64_t c = acc_delay_ / 1000000;
