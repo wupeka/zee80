@@ -21,7 +21,7 @@
 #include <chrono>
 #include <set>
 #include <string>
-#define INT_AUDIO_BUF_SIZE 2048
+#define INT_AUDIO_BUF_SIZE 1048
 #define EARBUFOFFSET 2
 #define EARBUFRESERVE 0
 #define LPF_BETA 0.25
@@ -43,11 +43,16 @@ public:
   virtual uint64_t contention(uint64_t address, uint64_t ts) override;
 
 protected:
+  void scanline(int y);
+  void dump();
+  bool do_frame();
+  static constexpr int MEMORY_SIZE = 65536;
+  bool processAudio();
+  virtual bool processinput();
+
   uint64_t earcycles = 78;
   int earcycles_mini = 3;
-  bool do_frame();
   EmuSDL emusdl;
-  static constexpr int MEMORY_SIZE = 65536;
   z80 cpu;
   ymsample abuf_[2 * INT_AUDIO_BUF_SIZE];
   char aearbuf_[EARBUFOFFSET * INT_AUDIO_BUF_SIZE + EARBUFRESERVE];
@@ -56,18 +61,12 @@ protected:
   int aearbufpos_ = 0;
   int abuf_pos_ = 0;
 
-  CYm2149Ex *ay;
+  CYm2149Ex *ay = NULL;
   SDL_AudioDeviceID sdldev;
   uint8_t ayport;
-  bool processAudio();
   std::chrono::steady_clock::time_point lastAyWrite;
-  uint64_t lastEarWrite;
 
-  void scanline(int y);
-  void dump();
-
-  SDL_Keycode debounce_;
-  virtual bool processinput();
+  SDL_Keycode debounce_ = 0;
 
   std::string romfile;
   std::string tapfile;
@@ -105,7 +104,7 @@ protected:
   int audio_started_ = 0;
   std::chrono::steady_clock::time_point tv_s_, tv_e_;
 
-  uint64_t pausecycles_;
+  uint64_t pausecycles_ = 0;
 };
 
 #endif /* ZX48K_H_ */

@@ -44,14 +44,14 @@ public:
   bool help_alt_ = false;
   int help_alt_scroll_ = 0;
   int snap_selected_ = 0;
-  uint8_t x_;
-  uint8_t y_;
-  SDL_Window *mapwindow_;
-  SDL_Renderer *maprenderer_;
-  SDL_Texture *maptexture_;
-  SDL_Texture *dot_;
-  Pandsnap *pandsnap_;
-  SpecText *spectext_;
+  uint8_t x_ = 0;
+  uint8_t y_ = 0;
+  SDL_Window *mapwindow_ = NULL;
+  SDL_Renderer *maprenderer_ = NULL;
+  SDL_Texture *maptexture_ = NULL;
+  SDL_Texture *dot_ = NULL;
+  Pandsnap *pandsnap_ = NULL;
+  SpecText *spectext_ = NULL;
   uint32_t finicount_ = 0;
 };
 
@@ -119,7 +119,7 @@ void pandora::writemem(uint16_t address, uint8_t v, bool dotrace) {
   }
   if (change) {
     upmap();
-    std::cout << "X: " << (int)x_ << " Y: " << (int)y_ << std::endl;
+//    std::cout << "X: " << (int)x_ << " Y: " << (int)y_ << std::endl;
   }
   zx48k::writemem(address, v, dotrace);
 }
@@ -143,7 +143,7 @@ bool pandora::trap(uint16_t pc) {
     return zx48k::trap(pc);
   }
 }
-pandora::pandora() {}
+pandora::pandora() { }
 
 void pandora::redraw_snap_screen() {
   uint32_t bg = 0x00CDCDCD;

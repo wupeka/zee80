@@ -95,11 +95,11 @@ private:
   // used for every tick
   uint64_t cycles = 0; // number of cycles taken
   uint64_t last_intr = 0;
-  uint8_t instr;   // current instruction
-  uint32_t instrv; // current instruction + 3 next bytes, volatile so make sure
-                   // it won't get optimized
+  uint8_t instr = 0;   // current instruction
+  uint32_t instrv = 0; // current instruction + 3 next bytes, volatile so make sure
+                       // it won't get optimized
   // ei works after the next instruction, sets this flag
-  bool ei_waiting;
+  bool ei_waiting = false;
 
   typedef void (z80::*op_t)();
 

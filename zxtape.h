@@ -28,12 +28,12 @@ private:
   enum { LEADIN, PILOT, SYNC, DATA, LEADOUT } blockstate_;
   void flip();
   bool bit();
-  size_t len_;
-  char *buf_;
-  uint32_t pos_;
-  uint32_t i_pos_;
-  bool ear_;
-  bool tock_;
+  size_t len_ = 0;
+  char *buf_ = NULL;
+  uint32_t pos_ = 0;
+  uint32_t i_pos_ = 0;
+  bool ear_ = false;
+  bool tock_ = false;
 };
 
 class zxtape {
@@ -49,7 +49,7 @@ public:
 private:
   enum { PAUSE, RUNNING, END } state_ = PAUSE;
   std::vector<std::unique_ptr<zxtapeblock>> blocks_;
-  unsigned block_;
-  bool singleblock_;
+  unsigned block_ = 0;
+  bool singleblock_ = false;
 };
 #endif /* ZXTAPE_H_ */

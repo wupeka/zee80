@@ -37,13 +37,14 @@ void z80::reset() {
   ix=0x3d4;
   iy=0x5c3a;
   R.sp=0xff52; */
-  R.pc = 0;
+  memset(&R, 0, sizeof(R));
 
-  R.imode = 0;
+/*  R.imode = 0;
   R.iff1 = false;
   R.iff2 = false;
+  R.pc = 0;
   R.i = 0;
-  R.r = 0;
+  R.r = 0; */
   //	a = 0xff;
   //	f = 0xff;
   //	bc = 0xffff;

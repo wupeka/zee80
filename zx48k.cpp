@@ -554,7 +554,6 @@ uint64_t zx48k::contention(uint64_t addr, uint64_t ts) {
     return 0;
   }
   ts -= 14335;
-  int line = ts / 224;
   int px = ts % 224;
   if (px > 128) {
     return 0;
@@ -620,7 +619,6 @@ bool zx48k::do_frame() {
       scanline(line++);
       v_diff_ -= 224;
       if (line >= 312) {
-        line = 0;
         if (!processinput()) {
           return false;
         }
@@ -646,7 +644,6 @@ bool zx48k::do_frame() {
             earcycles++;
             earcycles_mini = 0;
           }
-          raiseec = false;
         }
         return true;
       }
@@ -665,9 +662,9 @@ bool zx48k::do_frame() {
 
       acc_delay_ += handl_time - real_time;
 
-      if (acc_delay_ < 0 || turbo_) {
-        acc_delay_ = 0;
-      }
+//      if (acc_delay_ < 0 || turbo_) {
+//        acc_delay_ = 0;
+//      }
 
       if (acc_delay_ > 10000000) {
         uint64_t c = acc_delay_ / 1000000;
