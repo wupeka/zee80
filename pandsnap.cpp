@@ -1,5 +1,6 @@
 #include "pandsnap.h"
 #include <ctime>
+namespace zee80 {
 
 Pandsnap::Pandsnap(std::string filename) {
   datafile_ = fopen(filename.c_str(), "r+");
@@ -78,3 +79,4 @@ void Pandsnap::Load(int slot, z80 *cpu, uint8_t *mem) {
 }
 
 bool Pandsnap::Empty(int slot) { return slots_[slot] == 0; }
+}

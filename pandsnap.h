@@ -17,6 +17,8 @@
 #define SNAP_BLOCK_SIZE (512 + SNAP_MEMSIZE)
 #define SNAP_SLOTS 10
 #define HEAD_ "PANDSNAP"
+
+namespace zee80 {
 class Pandsnap {
 public:
   Pandsnap(std::string filename);
@@ -30,3 +32,4 @@ private:
   void init(std::string filename);
   std::vector<std::time_t> slots_;
 };
+}

@@ -21,13 +21,16 @@
 #include <chrono>
 #include <set>
 #include <string>
-#define INT_AUDIO_BUF_SIZE 1048
+#define INT_AUDIO_BUF_SIZE 2048
 #define EARBUFOFFSET 2
 #define EARBUFRESERVE 0
 #define LPF_BETA 0.25
 #define DCF_BETA 0.001
 //#define EARCYCLES 79
 //#define EARCYCLES 80
+
+namespace zee80 {
+
 class zx48k : public BusHandler {
 public:
   zx48k();
@@ -106,5 +109,6 @@ protected:
 
   uint64_t pausecycles_ = 0;
 };
+}
 
 #endif /* ZX48K_H_ */

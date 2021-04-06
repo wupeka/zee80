@@ -12,6 +12,8 @@
 #include <memory.h>
 #include <memory>
 
+
+namespace zee80 {
 using namespace std;
 
 zxtape::zxtape(string filename) {
@@ -235,3 +237,5 @@ bool const zxtape::ear() {
 bool const zxtapeblock::ear() { return ear_; }
 
 zxtapeblock::~zxtapeblock() { delete[] buf_; }
+
+}

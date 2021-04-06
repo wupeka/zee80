@@ -21,6 +21,8 @@
 #include <iostream>
 #include <strings.h>
 
+namespace zee80 {
+
 using namespace std;
 
 class pandora : public zx48k {
@@ -46,19 +48,19 @@ public:
   int snap_selected_ = 0;
   uint8_t x_ = 0;
   uint8_t y_ = 0;
-  SDL_Window *mapwindow_ = NULL;
-  SDL_Renderer *maprenderer_ = NULL;
-  SDL_Texture *maptexture_ = NULL;
-  SDL_Texture *dot_ = NULL;
-  Pandsnap *pandsnap_ = NULL;
-  SpecText *spectext_ = NULL;
+  SDL_Window *mapwindow_ = nullptr;
+  SDL_Renderer *maprenderer_ = nullptr;
+  SDL_Texture *maptexture_ = nullptr;
+  SDL_Texture *dot_ = nullptr;
+  Pandsnap *pandsnap_ = nullptr;
+  SpecText *spectext_ = nullptr;
   uint32_t finicount_ = 0;
 };
 
 void pandora::showmap() {
   if (mapwindow_) {
     SDL_DestroyWindow(mapwindow_);
-    mapwindow_ = NULL;
+    mapwindow_ = nullptr;
     return;
   }
   mapwindow_ =
@@ -75,7 +77,7 @@ void pandora::showmap() {
   for (int i = 0; i < 25 * 25; i++) {
     b[i] = (32 << 24) + (255 << 16); // red + alpha;
   }
-  SDL_UpdateTexture(dot_, NULL, b, 25 * sizeof(uint32_t));
+  SDL_UpdateTexture(dot_, nullptr, b, 25 * sizeof(uint32_t));
 }
 
 void pandora::upmap() {
@@ -86,8 +88,8 @@ void pandora::upmap() {
   int ry = 25 * (40 - y_);
   SDL_Rect dest = {.x = rx, .y = ry, .w = 25, .h = 25};
   SDL_RenderClear(maprenderer_);
-  SDL_RenderCopy(maprenderer_, maptexture_, NULL, NULL);
-  SDL_RenderCopy(maprenderer_, dot_, NULL, &dest);
+  SDL_RenderCopy(maprenderer_, maptexture_, nullptr, nullptr);
+  SDL_RenderCopy(maprenderer_, dot_, nullptr, &dest);
   SDL_RenderPresent(maprenderer_);
 }
 
@@ -105,6 +107,7 @@ void pandora::initialize() {
   cpu.addtrap(0x15e1);
   cpu.addtrap(0xcb03);
   cpu.addtrap(0x8dc5);
+  cpu.addtrap(0x77f4);
   emusdl.settitle("Puszka Pandory");
 }
 
@@ -139,6 +142,12 @@ bool pandora::trap(uint16_t pc) {
     // Intro loading
     intro_loaded_ = true;
     return false;
+  } else if (pc == 0x77f4) {
+    // GOWNO
+    auto_ = true;
+    tape_->reset(4);
+    cpu.reset();
+    return true;
   } else {
     return zx48k::trap(pc);
   }
@@ -159,13 +168,10 @@ void pandora::redraw_snap_screen() {
   int y = 45;
   auto list = pandsnap_->List();
   for (int i = 0; i < list.size(); i++) {
-    uint32_t bgg, fgg;
+    uint32_t bgg = bg, fgg = fg;
     if (snap_selected_ == i) {
       bgg = fg;
       fgg = bg;
-    } else {
-      bgg = bg;
-      fgg = fg;
     }
     spectext_->Write(list[i].data(), 59, y, 0, bgg, fgg);
     y += 12;
@@ -404,9 +410,9 @@ bool pandora::processinput() {
     quickload_ = !quickload_;
   } else if (emusdl.key_pressed(SDLK_F5)) {
     showmap();
-  } /* else if (emusdl.key_pressed(SDLK_F6)) {
+  } else if (emusdl.key_pressed(SDLK_F6)) {
     trace_ = true;
-  } */
+  } 
   else if (emusdl.key_pressed(SDLK_F7) && intro_loaded_) {
     save_screen_ = true;
     emusdl.draw_overlay_ = true;
@@ -435,13 +441,15 @@ bool pandora::processinput() {
   upmap();
   return true;
 }
+}
 
-pandora *emu;
+zee80::pandora *emu;
 int main(int argc, char **argv) {
   SDL_Init(SDL_INIT_EVERYTHING);
   atexit(SDL_Quit);
-  emu = new pandora();
+  emu = new zee80::pandora();
   emu->initialize();
   emu->run();
   return 0;
 }
+

@@ -16,6 +16,8 @@
 #include <iostream>
 #include <strings.h>
 
+namespace zee80 {
+
 using namespace std;
 
 class bigthings : public zx48k {
@@ -55,11 +57,13 @@ bool bigthings::processinput() {
   }
   return true;
 }
+}
 
-bigthings *emu;
+zee80::bigthings *emu;
 int main(int argc, char **argv) {
   SDL_Init(SDL_INIT_EVERYTHING);
-  emu = new bigthings();
+  emu = new zee80::bigthings();
   emu->initialize();
   emu->run();
 }
+

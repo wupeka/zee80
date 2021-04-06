@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+namespace zee80 {
+
 class zxtapeblock {
 public:
   zxtapeblock(char *data, size_t len);
@@ -52,4 +54,6 @@ private:
   unsigned block_ = 0;
   bool singleblock_ = false;
 };
+}
+
 #endif /* ZXTAPE_H_ */

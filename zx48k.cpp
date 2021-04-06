@@ -16,6 +16,9 @@
 #include <iostream>
 #include <strings.h>
 
+namespace zee80 {
+
+
 using namespace std;
 // namespace po = boost::program_options;
 
@@ -58,13 +61,11 @@ zx48k::zx48k()
     printf("Error opening audio device %s\n", SDL_GetError());
   }
   if (want.format != have.format) {
-    printf("Different aoudio format output\n");
+    printf("Different audio format output\n");
   }
   // To fill the buffer we'll unpause it after first frame.
-  SDL_PauseAudioDevice(sdldev, 1);
+  SDL_PauseAudioDevice(sdldev, 0);
   lastAyWrite = std::chrono::steady_clock::now();
-
-  // Tape load traps
 }
 
 void zx48k::initialize() {
@@ -622,9 +623,9 @@ bool zx48k::do_frame() {
         if (!processinput()) {
           return false;
         }
-        if (audio_started_ < 5 && ++audio_started_ == 5) {
-          SDL_PauseAudioDevice(sdldev, 0);
-        }
+//        if (audio_started_ < 5 && ++audio_started_ == 5) {
+//          SDL_PauseAudioDevice(sdldev, 0);
+//        }
 
         if (pausecycles_ == 0) {
           cpu.interrupt(0xff);
@@ -678,4 +679,5 @@ bool zx48k::do_frame() {
       tv_s_ = std::chrono::steady_clock::now();
     }
   }
+}
 }

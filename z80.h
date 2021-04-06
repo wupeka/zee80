@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 
+namespace zee80 {
+
 struct z80_regs {
   // registers
   uint8_t a;
@@ -320,4 +322,7 @@ private:
       true,  false, true,  false, false, true};
 };
 
+}
+
 #endif /* Z80_H_ */
+

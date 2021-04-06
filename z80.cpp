@@ -7,12 +7,14 @@
 
 #include "z80.h"
 
-#include <inttypes.h>
+#include <cinttypes>
 #include <iomanip>
 #include <iostream>
 
+namespace zee80 {
+
 constexpr bool z80::parity[];
-static uint8_t zero;
+static uint8_t zero = 0;
 
 z80::z80(BusHandler &bh) : bh(bh) { reset(); }
 
@@ -211,7 +213,6 @@ bool z80::interrupt(uint8_t data) {
 
 uint8_t *z80::regaddr(uint8_t r) {
   r = r & 0b111;
-  zero = 0;
   switch (r) {
   case 0b000:
     return ((uint8_t *)&R.bc) + 1;
@@ -1771,4 +1772,5 @@ void z80::op_II() {
     cycles -= 4;
     break;
   }
+}
 }
