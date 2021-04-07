@@ -40,6 +40,7 @@ public:
   virtual void writemem(uint16_t address, uint8_t v, bool dotrace) override;
   bool fullscreen = false;
   bool intro_loaded_ = false;
+  bool game_loaded_ = false;
   bool help_screen_ = false;
   bool load_screen_ = false;
   bool save_screen_ = false;
@@ -108,6 +109,7 @@ void pandora::initialize() {
   cpu.addtrap(0xcb03);
   cpu.addtrap(0x8dc5);
   cpu.addtrap(0x77f4);
+  cpu.addtrap(0x88c3);
   emusdl.settitle("Puszka Pandory");
 }
 
@@ -141,6 +143,10 @@ bool pandora::trap(uint16_t pc) {
   } else if (pc == 0xcb03) {
     // Intro loading
     intro_loaded_ = true;
+    return false;
+  } else if (pc == 0x88c3) {
+    std::cout << "Game loaded\n";
+    game_loaded_ = true;
     return false;
   } else if (pc == 0x77f4) {
     // GOWNO
@@ -326,12 +332,14 @@ void pandora::load_snap() {
   pandsnap_->Load(snap_selected_, &cpu, memory_ + 16384);
   ay->reset();
   tape_->reset(7);
+  game_loaded_ = true;
   emusdl.clearkey(SDLK_RETURN);
 }
 
 void pandora::save_snap() {
   std::cout << "Saving snap " << snap_selected_ << "\n";
   pandsnap_->Save(snap_selected_, &cpu, memory_ + 16384);
+  emusdl.clearkey(SDLK_RETURN);
 }
 
 bool pandora::processinput() {
@@ -411,9 +419,9 @@ bool pandora::processinput() {
   } else if (emusdl.key_pressed(SDLK_F5)) {
     showmap();
   } else if (emusdl.key_pressed(SDLK_F6)) {
-    trace_ = true;
+//    trace_ = true;
   } 
-  else if (emusdl.key_pressed(SDLK_F7) && intro_loaded_) {
+  else if (emusdl.key_pressed(SDLK_F7) && game_loaded_) {
     save_screen_ = true;
     emusdl.draw_overlay_ = true;
     redraw_snap_screen();
