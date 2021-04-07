@@ -3,7 +3,7 @@
 namespace zee80 {
 
 Pandsnap::Pandsnap(std::string filename) {
-  datafile_ = fopen(filename.c_str(), "r+");
+  datafile_ = fopen(filename.c_str(), "r+b");
   if (datafile_ == NULL) {
     init(filename);
     return;
@@ -12,6 +12,7 @@ Pandsnap::Pandsnap(std::string filename) {
   int length = ftell(datafile_);
   fseek(datafile_, 0, SEEK_SET);
   if (length != SNAP_HDR_SIZE + SNAP_SLOTS * SNAP_BLOCK_SIZE) {
+    std::cout << "LENGTH " << length << " NEQ " <<  SNAP_HDR_SIZE + SNAP_SLOTS * SNAP_BLOCK_SIZE << "\n";
     throw;
   }
   char head[8];
@@ -43,15 +44,17 @@ std::vector<std::string> Pandsnap::List() {
 }
 
 void Pandsnap::init(std::string filename) {
-  datafile_ = fopen(filename.c_str(), "w");
+  datafile_ = fopen(filename.c_str(), "wb");
+  fseek(datafile_, 0, SEEK_SET);
   fwrite(HEAD_, 8, 1, datafile_);
   char zeros[SNAP_BLOCK_SIZE] = {0};
   for (int i = 0; i < SNAP_SLOTS; i++) {
     fwrite(zeros, SNAP_BLOCK_SIZE, 1, datafile_);
     slots_.push_back(0);
   }
+  fflush(datafile_);
   fclose(datafile_);
-  datafile_ = fopen(filename.c_str(), "r+");
+  datafile_ = fopen(filename.c_str(), "r+b");
 }
 
 void Pandsnap::Save(int slot, z80 *cpu, uint8_t *mem) {
